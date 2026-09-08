@@ -1,6 +1,19 @@
 import type tmi from "tmi.js";
 
-import { getRandomPokemonSpeciesName } from "@/utils/pokemon-species";
+import { GOLD, STAFF_BONUS_HP, findShopItem, shopListing } from "@/features/economy/shop";
+import { DuelManager, pickChampion, resolveDuel } from "@/features/units/duel";
+import type { Unit } from "@/features/units/model";
+import { recruitRandomUnit, getUnitById } from "@/features/units/roster";
+
+function randomUnitId(): Promise<string> {
+  return Promise.resolve(recruitRandomUnit().id);
+}
+
+function displayUnit(id: string): string {
+  const unit = getUnitById(id);
+  if (!unit) return id.charAt(0).toUpperCase() + id.slice(1);
+  return `${unit.name} ${unit.epithet} [${unit.rarity}]`;
+}
 
 import type { PokeCommand } from "./commands";
 
@@ -42,7 +55,21 @@ export type WelcomePackInput = GamePlayer & {
   poke: string;
 };
 
+export type EquippedWeapon = { kind: string; uses: number } | null;
+
 export interface GameStore {
+  // eslint-disable-next-line no-unused-vars
+  getUserUnitIds(_input: { channel: string; user: string }): Promise<string[]>;
+  // eslint-disable-next-line no-unused-vars
+  earnGold(_input: { channel: string; user: string; amount: number }): Promise<number>;
+  // eslint-disable-next-line no-unused-vars
+  getGold(_input: { channel: string; user: string }): Promise<number>;
+  buyWeapon(
+    // eslint-disable-next-line no-unused-vars
+    _input: { channel: string; user: string; kind: string; price: number; uses: number },
+  ): Promise<{ ok: boolean; gold: number }>;
+  // eslint-disable-next-line no-unused-vars
+  useEquippedWeapon(_input: { channel: string; user: string }): Promise<EquippedWeapon>;
   // eslint-disable-next-line no-unused-vars
   ensureEncounter(_input: { channel: string; poke: string }): Promise<void>;
   // eslint-disable-next-line no-unused-vars
@@ -65,7 +92,7 @@ type GameDependencies = {
 };
 
 const defaultDependencies: GameDependencies = {
-  getRandomPokemon: getRandomPokemonSpeciesName,
+  getRandomPokemon: randomUnitId,
   rollDamage: () => Math.floor(Math.random() * 10) + 5,
 };
 
@@ -73,6 +100,7 @@ export class PokemonGame {
   private readonly store: GameStore;
   private readonly appUrl: string;
   private readonly dependencies: GameDependencies;
+  private readonly duels = new DuelManager();
 
   constructor(
     store: GameStore,
@@ -96,11 +124,40 @@ export class PokemonGame {
     client: tmi.Client,
     channel: string,
     player: GamePlayer,
+    arg: string | null = null,
   ) {
     if (command === "help") {
       await client.say(
         channel,
-        "Pokitch: !poke attack | status | last | inventory | welcomepack",
+        "Emblem: !fe fight | duel @user | accept | gold | shop | buy <item> | army | muster | status | last",
+      );
+      return;
+    }
+    if (command === "gold") {
+      const gold = await this.store.getGold({ channel, user: player.username });
+      await client.say(channel, `@${player.username} has ${gold} gold.`);
+      return;
+    }
+    if (command === "shop") {
+      await client.say(channel, `Market (30 uses each): ${shopListing()} — !fe buy <item>`);
+      return;
+    }
+    if (command === "buy") {
+      return this.buy(client, channel, player, arg);
+    }
+    if (command === "duel") {
+      return this.challenge(client, channel, player, arg);
+    }
+    if (command === "accept") {
+      return this.acceptDuel(client, channel, player);
+    }
+    if (command === "decline") {
+      const challenger = this.duels.decline(channel, player.username);
+      await client.say(
+        channel,
+        challenger
+          ? `@${player.username} declined @${challenger}'s challenge.`
+          : `@${player.username}, no one has challenged you.`,
       );
       return;
     }
@@ -109,7 +166,7 @@ export class PokemonGame {
       await client.say(
         channel,
         status
-          ? `Wild ${status.poke} has ${status.health}/50 HP.`
+          ? `${displayUnit(status.poke)} stands at ${status.health}/50 HP.`
           : "There is no active encounter right now.",
       );
       return;
@@ -119,8 +176,8 @@ export class PokemonGame {
       await client.say(
         channel,
         caught
-          ? `Last catch: @${caught.username} caught ${caught.poke}.`
-          : "No catches have been recorded in this channel yet.",
+          ? `Latest recruit: @${caught.username} recruited ${displayUnit(caught.poke)}.`
+          : "No recruits have joined in this channel yet.",
       );
       return;
     }
@@ -156,7 +213,7 @@ export class PokemonGame {
 
     await client.say(
       channel,
-      `@${player.username} received ${result.poke ?? poke} as a welcome pack!`,
+      `@${player.username} mustered ${displayUnit(result.poke ?? poke)} into their army!`,
     );
   }
 
@@ -190,13 +247,106 @@ export class PokemonGame {
       username: player.username,
     });
 
+    if (result.outcome === "hit") {
+      await this.store.earnGold({ channel, user: player.username, amount: GOLD.bossHit });
+    }
     if (result.outcome === "caught") {
-      const caughtPoke = result.poke.charAt(0).toUpperCase() + result.poke.slice(1);
-      const nextPoke = result.nextPoke.charAt(0).toUpperCase() + result.nextPoke.slice(1);
+      await this.store.earnGold({ channel, user: player.username, amount: GOLD.recruit });
       await client.say(
         channel,
-        `🎉 @${player.username} caught ${caughtPoke}! A wild ${nextPoke} has appeared.`
+        `⚔️ @${player.username} bested and recruited ${displayUnit(result.poke)}! ${displayUnit(result.nextPoke)} approaches...`
       );
     }
   }
-}
+
+  private async buy(
+    client: tmi.Client,
+    channel: string,
+    player: GamePlayer,
+    arg: string | null,
+  ) {
+    const item = arg ? findShopItem(arg) : undefined;
+    if (!item) {
+      await client.say(channel, `@${player.username}, choose an item: ${shopListing()}`);
+      return;
+    }
+    const result = await this.store.buyWeapon({
+      channel,
+      user: player.username,
+      kind: item.kind,
+      price: item.price,
+      uses: item.uses,
+    });
+    await client.say(
+      channel,
+      result.ok
+        ? `@${player.username} bought a ${item.label} (${item.uses} uses). ${result.gold}g left.`
+        : `@${player.username}, not enough gold (${item.price}g needed, you have ${result.gold}g).`,
+    );
+  }
+
+  private async challenge(
+    client: tmi.Client,
+    channel: string,
+    player: GamePlayer,
+    arg: string | null,
+  ) {
+    if (!arg || arg === player.username) {
+      await client.say(channel, `@${player.username}, use: !fe duel @rival`);
+      return;
+    }
+    this.duels.challenge(channel, player.username, arg);
+    await client.say(
+      channel,
+      `⚔️ @${player.username} challenges @${arg} to a duel! Type "!fe accept" within 60s.`,
+    );
+  }
+
+  private async championFor(channel: string, user: string): Promise<Unit | null> {
+    const ids = await this.store.getUserUnitIds({ channel, user });
+    const units = ids
+      .map((id) => getUnitById(id))
+      .filter((x): x is Unit => Boolean(x));
+    return pickChampion(units);
+  }
+
+  private async acceptDuel(client: tmi.Client, channel: string, player: GamePlayer) {
+    const challenger = this.duels.accept(channel, player.username);
+    if (!challenger) {
+      await client.say(channel, `@${player.username}, no live challenge (they expire after 60s).`);
+      return;
+    }
+    const [unitA, unitB] = await Promise.all([
+      this.championFor(channel, challenger),
+      this.championFor(channel, player.username),
+    ]);
+    if (!unitA || !unitB) {
+      const missing = !unitA ? challenger : player.username;
+      await client.say(channel, `@${missing} has no units yet — grab one with !fe muster.`);
+      return;
+    }
+    const [weaponA, weaponB] = await Promise.all([
+      this.store.useEquippedWeapon({ channel, user: challenger }),
+      this.store.useEquippedWeapon({ channel, user: player.username }),
+    ]);
+    const fighter = (username: string, unit: Unit, w: EquippedWeapon) => ({
+      username,
+      unit,
+      weapon: w && w.kind !== "staff" ? (w.kind as Unit["weapon"]) : undefined,
+      bonusHp: w?.kind === "staff" ? STAFF_BONUS_HP : 0,
+    });
+    const result = resolveDuel(
+      fighter(challenger, unitA, weaponA),
+      fighter(player.username, unitB, weaponB),
+    );
+    await Promise.all([
+      this.store.earnGold({ channel, user: result.winner, amount: GOLD.duelWin }),
+      this.store.earnGold({ channel, user: result.loser, amount: GOLD.duelLoss }),
+    ]);
+    const winnerUnit = result.winner === challenger ? unitA : unitB;
+    await client.say(
+      channel,
+      `🏆 @${result.winner}'s ${winnerUnit.name} ${winnerUnit.epithet} wins the duel against @${result.loser} in ${result.rounds} rounds! +${GOLD.duelWin}g (loser +${GOLD.duelLoss}g).`,
+    );
+  }
+}

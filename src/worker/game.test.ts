@@ -1,6 +1,14 @@
 import type tmi from "tmi.js";
 import { describe, expect, it } from "vitest";
 
+const economyStubs = {
+  getUserUnitIds: async () => [],
+  earnGold: async () => 0,
+  getGold: async () => 0,
+  buyWeapon: async () => ({ ok: false, gold: 0 }),
+  useEquippedWeapon: async () => null,
+};
+
 import { PokemonGame, type GameStore } from "./game";
 
 function createChatClient() {
@@ -17,6 +25,7 @@ function createChatClient() {
 describe("PokemonGame", () => {
   it("answers help, status, and last-catch commands on demand", async () => {
     const store = {
+    ...economyStubs,
       ensureEncounter: async () => undefined,
       attack: async () => ({
         outcome: "hit" as const,
@@ -44,15 +53,15 @@ describe("PokemonGame", () => {
       {
         channel: "streamer",
         message:
-          "Pokitch: !poke attack | status | last | inventory | welcomepack",
+          "Emblem: !fe fight | duel @user | accept | gold | shop | buy <item> | army | muster | status | last",
       },
       {
         channel: "streamer",
-        message: "Wild pikachu has 32/50 HP.",
+        message: "Pikachu stands at 32/50 HP.",
       },
       {
         channel: "streamer",
-        message: "Last catch: @winner caught mew.",
+        message: "Latest recruit: @winner recruited Mew.",
       },
     ]);
   });
@@ -60,6 +69,7 @@ describe("PokemonGame", () => {
   it("processes an attack atomically through the game store", async () => {
     const attacks: Parameters<GameStore["attack"]>[0][] = [];
     const store: GameStore = {
+      ...economyStubs,
       ensureEncounter: async () => undefined,
       attack: async (input) => {
         attacks.push(input);
@@ -104,6 +114,7 @@ describe("PokemonGame", () => {
 
   it("announces a caught Pokemon in chat", async () => {
     const store: GameStore = {
+      ...economyStubs,
       ensureEncounter: async () => undefined,
       attack: async () => ({
         outcome: "caught",
@@ -134,7 +145,7 @@ describe("PokemonGame", () => {
     expect(messages).toEqual([
       {
         channel: "streamer",
-        message: "🎉 @viewer caught Mew! A wild Eevee has appeared.",
+        message: "⚔️ @viewer bested and recruited Mew! Eevee approaches...",
       },
     ]);
   });
@@ -142,6 +153,7 @@ describe("PokemonGame", () => {
   it("claims a welcome pack once using the stable Twitch identity", async () => {
     const claims: Parameters<GameStore["claimWelcomePack"]>[0][] = [];
     const store: GameStore = {
+      ...economyStubs,
       ensureEncounter: async () => undefined,
       attack: async () => ({
         outcome: "hit",
@@ -182,13 +194,14 @@ describe("PokemonGame", () => {
     expect(messages).toEqual([
       {
         channel: "streamer",
-        message: "@viewer received bulbasaur as a welcome pack!",
+        message: "@viewer mustered Bulbasaur into their army!",
       },
     ]);
   });
 
   it("reports an already claimed welcome pack without inserting another", async () => {
     const store: GameStore = {
+      ...economyStubs,
       ensureEncounter: async () => undefined,
       attack: async () => ({
         outcome: "hit",
@@ -226,6 +239,7 @@ describe("PokemonGame", () => {
   it("initializes a channel through an idempotent store operation", async () => {
     const encounters: Array<{ channel: string; poke: string }> = [];
     const store: GameStore = {
+      ...economyStubs,
       ensureEncounter: async (input) => {
         encounters.push(input);
       },

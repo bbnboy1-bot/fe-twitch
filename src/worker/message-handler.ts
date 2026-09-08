@@ -3,6 +3,7 @@ import type tmi from "tmi.js";
 import {
   type ChannelQueue,
   type CommandGate,
+  parseCommandArg,
   parseGamePlayer,
   parsePokeCommand,
 } from "./commands";
@@ -41,7 +42,8 @@ export async function handleChatMessage({
   const channel = rawChannel.replace(/^#/, "").toLowerCase();
   if (!commandGate.consume(command, channel, player.twitchId)) return;
 
+  const arg = parseCommandArg(message);
   await queue.run(channel, () =>
-    game.handle(command, client, channel, player),
+    game.handle(command, client, channel, player, arg),
   );
 }

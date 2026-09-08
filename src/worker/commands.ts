@@ -4,11 +4,22 @@ export type PokeCommand =
   | "inventory"
   | "help"
   | "status"
-  | "last";
+  | "last"
+  | "duel"
+  | "accept"
+  | "decline"
+  | "gold"
+  | "shop"
+  | "buy";
 
 const COMMANDS: Record<string, PokeCommand> = {
   attack: "attack",
   a: "attack",
+  fight: "attack",
+  f: "attack",
+  muster: "welcome-pack",
+  m: "welcome-pack",
+  army: "inventory",
   welcomepack: "welcome-pack",
   wp: "welcome-pack",
   inventory: "inventory",
@@ -19,7 +30,23 @@ const COMMANDS: Record<string, PokeCommand> = {
   s: "status",
   last: "last",
   l: "last",
+  duel: "duel",
+  d: "duel",
+  accept: "accept",
+  decline: "decline",
+  gold: "gold",
+  g: "gold",
+  shop: "shop",
+  buy: "buy",
 };
+
+/** Third token of the message, e.g. "!fe duel @rival" -> "rival". */
+export function parseCommandArg(message: string): string | null {
+  const parts = message.trim().toLowerCase().split(/\s+/);
+  const arg = parts[2];
+  if (!arg) return null;
+  return arg.replace(/^@/, "");
+}
 
 function normalizeChannel(channel: string) {
   return channel.replace(/^#/, "").trim().toLowerCase();
@@ -43,7 +70,7 @@ export function getChannelSyncPlan(
 export function parsePokeCommand(message: string): PokeCommand | null {
   const [root, command] = message.trim().toLowerCase().split(/\s+/);
 
-  if (root !== "!poke" || !command) {
+  if ((root !== "!fe" && root !== "!poke") || !command) {
     return null;
   }
 
