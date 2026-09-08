@@ -1,0 +1,1207 @@
+diff --git a/src/features/economy/shop.ts b/src/features/economy/shop.ts
+new file mode 100644
+index 0000000..b672402
+--- /dev/null
++++ b/src/features/economy/shop.ts
+@@ -0,0 +1,36 @@
++import type { WeaponType } from "@/features/units/model";
++
++export type ShopItem = {
++  kind: WeaponType;
++  label: string;
++  price: number;
++  uses: number;
++};
++
++/** Hudson's market: Sword, Lance, Axe, Tome, Heal Staff — 30 uses each. */
++export const SHOP: ShopItem[] = [
++  { kind: "sword", label: "Steel Sword", price: 100, uses: 30 },
++  { kind: "lance", label: "Steel Lance", price: 100, uses: 30 },
++  { kind: "axe", label: "Steel Axe", price: 100, uses: 30 },
++  { kind: "tome", label: "Ember Tome", price: 120, uses: 30 },
++  { kind: "staff", label: "Heal Staff", price: 150, uses: 30 },
++];
++
++export const GOLD = {
++  duelWin: 20,
++  duelLoss: 5,
++  recruit: 25,
++  bossHit: 1,
++};
++
++export function findShopItem(name: string): ShopItem | undefined {
++  const q = name.trim().toLowerCase();
++  return SHOP.find((i) => i.kind === q || i.label.toLowerCase().includes(q));
++}
++
++export function shopListing(): string {
++  return SHOP.map((i) => `${i.kind} ${i.price}g`).join(" | ");
++}
++
++/** Heal staff blesses its owner with bonus HP instead of overriding attack weapon. */
++export const STAFF_BONUS_HP = 8;
+diff --git a/src/features/units/duel.test.ts b/src/features/units/duel.test.ts
+new file mode 100644
+index 0000000..d9f34ee
+--- /dev/null
++++ b/src/features/units/duel.test.ts
+@@ -0,0 +1,79 @@
++import { describe, expect, it } from "vitest";
++
++import { DuelManager, pickChampion, resolveDuel } from "./duel";
++import { getUnitById } from "./roster";
++
++const unit = (id: string) => {
++  const u = getUnitById(id);
++  if (!u) throw new Error(`missing ${id}`);
++  return u;
++};
++
++describe("resolveDuel", () => {
++  it("produces a winner and loser", () => {
++    let seed = 7;
++    const rng = () => {
++      seed = (seed * 1103515245 + 12345) % 2147483648;
++      return seed / 2147483648;
++    };
++    const result = resolveDuel(
++      { username: "alice", unit: unit("nyx") },
++      { username: "bob", unit: unit("bram") },
++      rng,
++    );
++    expect(["alice", "bob"]).toContain(result.winner);
++    expect(result.winner).not.toBe(result.loser);
++    expect(result.log.length).toBeGreaterThan(0);
++  });
++
++  it("weapon override changes triangle outcomes", () => {
++    // bram is a lance sentinel; give alice an axe (loses to lance? no: axe loses to lance!)
++    // give alice a lance vs sword duelist colm: lance beats sword.
++    const result = resolveDuel(
++      { username: "alice", unit: unit("bram"), weapon: "lance" },
++      { username: "bob", unit: unit("colm") },
++      () => 0, // always hit+crit
++    );
++    expect(result.log.some((line) => line.includes("(weapon advantage)"))).toBe(true);
++  });
++
++  it("staff blessing grants bonus hp", () => {
++    const plain = resolveDuel(
++      { username: "a", unit: unit("liora") },
++      { username: "b", unit: unit("orrick") },
++      () => 0.5,
++    );
++    const blessed = resolveDuel(
++      { username: "a", unit: unit("liora"), bonusHp: 8 },
++      { username: "b", unit: unit("orrick") },
++      () => 0.5,
++    );
++    // same deterministic rng: blessed run should never end with LESS hp for "a"
++    expect(blessed.finalHp["a"]).toBeGreaterThanOrEqual(plain.finalHp["a"]);
++  });
++});
++
++describe("pickChampion", () => {
++  it("prefers rarity, then stat total", () => {
++    const champ = pickChampion([unit("bram"), unit("caelen"), unit("nyx")]);
++    expect(champ?.id).toBe("caelen");
++  });
++  it("returns null for empty armies", () => {
++    expect(pickChampion([])).toBeNull();
++  });
++});
++
++describe("DuelManager", () => {
++  it("accepts a live challenge exactly once", () => {
++    const duels = new DuelManager();
++    duels.challenge("chan", "Alice", "Bob");
++    expect(duels.accept("chan", "bob")).toBe("alice");
++    expect(duels.accept("chan", "bob")).toBeNull();
++  });
++
++  it("expires stale challenges", () => {
++    const duels = new DuelManager(-1);
++    duels.challenge("chan", "alice", "bob");
++    expect(duels.accept("chan", "bob")).toBeNull();
++  });
++});
+diff --git a/src/features/units/duel.ts b/src/features/units/duel.ts
+new file mode 100644
+index 0000000..8332b2c
+--- /dev/null
++++ b/src/features/units/duel.ts
+@@ -0,0 +1,122 @@
++import {
++  type Rng,
++  type Stats,
++  type Unit,
++  type WeaponType,
++  resolveStrike,
++  strikesFor,
++} from "./model";
++
++export type Fighter = {
++  username: string;
++  unit: Unit;
++  /** Equipped weapon overrides the unit's class weapon. */
++  weapon?: WeaponType;
++  /** Bonus HP (e.g. heal staff blessing). */
++  bonusHp?: number;
++};
++
++export type DuelResult = {
++  winner: string;
++  loser: string;
++  rounds: number;
++  log: string[];
++  finalHp: Record<string, number>;
++};
++
++const MAX_ROUNDS = 12;
++
++/** Full auto-resolved duel: alternating strikes, doubling, first KO wins. */
++export function resolveDuel(a: Fighter, b: Fighter, rng: Rng = Math.random): DuelResult {
++  const hp: Record<string, number> = {
++    [a.username]: a.unit.base.hp + (a.bonusHp ?? 0),
++    [b.username]: b.unit.base.hp + (b.bonusHp ?? 0),
++  };
++  const log: string[] = [];
++  const side = (f: Fighter) => ({
++    stats: f.unit.base,
++    weapon: f.weapon ?? f.unit.weapon,
++  });
++
++  let round = 0;
++  // Faster fighter opens the duel; ties favour the challenger (a).
++  let [att, def] = b.unit.base.spd > a.unit.base.spd ? [b, a] : [a, b];
++
++  while (round < MAX_ROUNDS) {
++    round++;
++    const strikes = strikesFor(att.unit.base, def.unit.base);
++    for (let i = 0; i < strikes; i++) {
++      const roll = resolveStrike(side(att), side(def), rng);
++      if (!roll.hit) {
++        log.push(`${att.unit.name} misses ${def.unit.name}!`);
++        continue;
++      }
++      hp[def.username] = Math.max(0, hp[def.username] - roll.damage);
++      log.push(
++        `${att.unit.name} ${roll.crit ? "CRITS" : "strikes"} ${def.unit.name} for ${roll.damage}!` +
++          (roll.triangle === 1 ? " (weapon advantage)" : ""),
++      );
++      if (hp[def.username] <= 0) {
++        return {
++          winner: att.username,
++          loser: def.username,
++          rounds: round,
++          log,
++          finalHp: hp,
++        };
++      }
++    }
++    [att, def] = [def, att];
++  }
++
++  // Timeout: most remaining HP (percentage of start) wins; tie → challenger.
++  const pct = (f: Fighter) => hp[f.username] / (f.unit.base.hp + (f.bonusHp ?? 0));
++  const winner = pct(b) > pct(a) ? b : a;
++  const loser = winner === a ? b : a;
++  return { winner: winner.username, loser: loser.username, rounds: round, log, finalHp: hp };
++}
++
++/** Pick a collector's champion: best rarity, then stat total. */
++export function pickChampion(units: Unit[]): Unit | null {
++  const rank = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
++  const total = (s: Stats) => s.hp + s.atk + s.spd + s.def + s.skl + s.lck;
++  return (
++    [...units].sort(
++      (x, y) => rank[y.rarity] - rank[x.rarity] || total(y.base) - total(x.base),
++    )[0] ?? null
++  );
++}
++
++/** Ephemeral challenge tracker (worker memory; no DB needed). */
++export class DuelManager {
++  private pending = new Map<string, { challenger: string; createdAt: number }>();
++  constructor(private readonly ttlMs = 60_000) {}
++
++  private key(channel: string, target: string) {
++    return `${channel}:${target.toLowerCase()}`;
++  }
++
++  challenge(channel: string, challenger: string, target: string) {
++    this.pending.set(this.key(channel, target), {
++      challenger: challenger.toLowerCase(),
++      createdAt: Date.now(),
++    });
++  }
++
++  /** Returns the challenger if @target has a live challenge, consuming it. */
++  accept(channel: string, target: string): string | null {
++    const k = this.key(channel, target);
++    const entry = this.pending.get(k);
++    if (!entry) return null;
++    this.pending.delete(k);
++    if (Date.now() - entry.createdAt > this.ttlMs) return null;
++    return entry.challenger;
++  }
++
++  decline(channel: string, target: string): string | null {
++    const k = this.key(channel, target);
++    const entry = this.pending.get(k);
++    this.pending.delete(k);
++    return entry ? entry.challenger : null;
++  }
++}
+diff --git a/src/features/units/model.test.ts b/src/features/units/model.test.ts
+new file mode 100644
+index 0000000..c5a18f0
+--- /dev/null
++++ b/src/features/units/model.test.ts
+@@ -0,0 +1,86 @@
++import { describe, expect, it } from "vitest";
++
++import { resolveStrike, strikesFor, triangleModifier } from "./model";
++import { ROSTER, recruitRandomUnit } from "./roster";
++
++describe("weapon triangle", () => {
++  it("follows sword > axe > lance > sword", () => {
++    expect(triangleModifier("sword", "axe")).toBe(1);
++    expect(triangleModifier("axe", "lance")).toBe(1);
++    expect(triangleModifier("lance", "sword")).toBe(1);
++    expect(triangleModifier("axe", "sword")).toBe(-1);
++    expect(triangleModifier("sword", "sword")).toBe(0);
++  });
++
++  it("pits tomes against bows", () => {
++    expect(triangleModifier("tome", "bow")).toBe(1);
++    expect(triangleModifier("bow", "tome")).toBe(1);
++  });
++});
++
++describe("combat", () => {
++  const swordster = {
++    stats: { hp: 20, atk: 8, spd: 8, def: 4, skl: 8, lck: 5 },
++    weapon: "sword" as const,
++  };
++  const axeman = {
++    stats: { hp: 24, atk: 9, spd: 4, def: 5, skl: 4, lck: 3 },
++    weapon: "axe" as const,
++  };
++
++  it("always deals at least 1 damage on hit", () => {
++    const tank = {
++      stats: { hp: 30, atk: 2, spd: 1, def: 99, skl: 1, lck: 1 },
++      weapon: "lance" as const,
++    };
++    const roll = resolveStrike(swordster, tank, () => 0); // rng 0 => guaranteed hit+crit
++    expect(roll.hit).toBe(true);
++    expect(roll.damage).toBeGreaterThanOrEqual(1);
++  });
++
++  it("triples damage on crit", () => {
++    const roll = resolveStrike(swordster, axeman, () => 0);
++    expect(roll.crit).toBe(true);
++    // base = 8 - 5 + 1 (triangle) = 4, crit x3 = 12
++    expect(roll.damage).toBe(12);
++  });
++
++  it("misses when rng is unfavourable", () => {
++    const roll = resolveStrike(swordster, axeman, () => 0.999999);
++    expect(roll.hit).toBe(false);
++    expect(roll.damage).toBe(0);
++  });
++
++  it("grants a follow-up at 4+ speed advantage", () => {
++    expect(strikesFor(swordster.stats, axeman.stats)).toBe(2);
++    expect(strikesFor(axeman.stats, swordster.stats)).toBe(1);
++  });
++});
++
++describe("recruiting", () => {
++  it("has unique unit ids", () => {
++    const ids = new Set(ROSTER.map((x) => x.id));
++    expect(ids.size).toBe(ROSTER.length);
++  });
++
++  it("returns a roster unit for any rng value", () => {
++    for (const r of [0, 0.25, 0.5, 0.75, 0.999999]) {
++      const unit = recruitRandomUnit(() => r);
++      expect(ROSTER).toContain(unit);
++    }
++  });
++
++  it("legendaries stay rare (~1%)", () => {
++    let legendaries = 0;
++    let seed = 42;
++    const rng = () => {
++      seed = (seed * 1103515245 + 12345) % 2147483648;
++      return seed / 2147483648;
++    };
++    for (let i = 0; i < 20000; i++) {
++      if (recruitRandomUnit(rng).rarity === "legendary") legendaries++;
++    }
++    expect(legendaries / 20000).toBeGreaterThan(0.002);
++    expect(legendaries / 20000).toBeLessThan(0.03);
++  });
++});
+diff --git a/src/features/units/model.ts b/src/features/units/model.ts
+new file mode 100644
+index 0000000..c46b8b3
+--- /dev/null
++++ b/src/features/units/model.ts
+@@ -0,0 +1,113 @@
++/**
++ * Emblem-style unit system (original IP).
++ * Classes, weapon triangle, stats and combat math recognisable to
++ * tactics fans, with an original roster and setting.
++ */
++
++export type WeaponType = "sword" | "lance" | "axe" | "bow" | "tome" | "staff";
++
++export type UnitClass =
++  | "duelist" // fast sword infantry (myrmidon-style)
++  | "sentinel" // armored lance wall (knight-style)
++  | "outrider" // mounted lance (cavalier-style)
++  | "berserker" // axe bruiser
++  | "skyrider" // flying lance (pegasus-style)
++  | "ranger" // bow
++  | "arcanist" // tome
++  | "mender"; // staff support
++
++export type Rarity = "common" | "uncommon" | "rare" | "legendary";
++
++export type Stats = {
++  hp: number;
++  atk: number;
++  spd: number;
++  def: number;
++  skl: number; // hit + crit contribution
++  lck: number; // crit avoidance + small hit boost
++};
++
++export type Unit = {
++  id: string;
++  name: string;
++  epithet: string;
++  unitClass: UnitClass;
++  weapon: WeaponType;
++  rarity: Rarity;
++  base: Stats;
++};
++
++export const CLASS_WEAPON: Record<UnitClass, WeaponType> = {
++  duelist: "sword",
++  sentinel: "lance",
++  outrider: "lance",
++  berserker: "axe",
++  skyrider: "lance",
++  ranger: "bow",
++  arcanist: "tome",
++  mender: "staff",
++};
++
++/** Classic triangle: sword > axe > lance > sword. Tomes beat bows; staves neutral. */
++export function triangleModifier(a: WeaponType, b: WeaponType): number {
++  const beats: Partial<Record<WeaponType, WeaponType>> = {
++    sword: "axe",
++    axe: "lance",
++    lance: "sword",
++    tome: "bow",
++    bow: "tome",
++  };
++  if (beats[a] === b) return 1;
++  if (beats[b] === a) return -1;
++  return 0;
++}
++
++export type CombatRoll = {
++  hit: boolean;
++  crit: boolean;
++  damage: number;
++  triangle: -1 | 0 | 1;
++};
++
++export type Rng = () => number; // [0, 1)
++
++/**
++ * One strike, FE-flavoured:
++ * hit% = 70 + 2*skl + lck - foe spd*2, clamped 10..100, ±15 for triangle
++ * crit% = skl - foe lck, clamped 0..35
++ * damage = atk - foe def (min 1), +1/-1 triangle, x3 on crit
++ */
++export function resolveStrike(
++  attacker: { stats: Stats; weapon: WeaponType },
++  defender: { stats: Stats; weapon: WeaponType },
++  rng: Rng = Math.random,
++): CombatRoll {
++  const tri = triangleModifier(attacker.weapon, defender.weapon) as -1 | 0 | 1;
++
++  const hitChance = clamp(
++    70 +
++      attacker.stats.skl * 2 +
++      attacker.stats.lck -
++      defender.stats.spd * 2 +
++      tri * 15,
++    10,
++    100,
++  );
++  const critChance = clamp(attacker.stats.skl - defender.stats.lck, 0, 35);
++
++  const hit = rng() * 100 < hitChance;
++  if (!hit) return { hit: false, crit: false, damage: 0, triangle: tri };
++
++  const crit = rng() * 100 < critChance;
++  const raw = Math.max(1, attacker.stats.atk - defender.stats.def + tri);
++  return { hit: true, crit, damage: crit ? raw * 3 : raw, triangle: tri };
++}
++
++/** Doubling rule: 4+ spd advantage grants a follow-up strike. */
++export function strikesFor(attacker: Stats, defender: Stats): 1 | 2 {
++  return attacker.spd - defender.spd >= 4 ? 2 : 1;
++}
++
++function clamp(v: number, min: number, max: number) {
++  return Math.min(max, Math.max(min, v));
++}
+diff --git a/src/features/units/roster.ts b/src/features/units/roster.ts
+new file mode 100644
+index 0000000..f7a5dca
+--- /dev/null
++++ b/src/features/units/roster.ts
+@@ -0,0 +1,94 @@
++import type { Rarity, Unit } from "./model";
++
++/**
++ * Original roster for the realm of Veyra. Names/characters are ours;
++ * the archetypes are the familiar tactics classics.
++ */
++export const ROSTER: Unit[] = [
++  // ---- Common ----
++  u("bram", "Bram", "the Steadfast", "sentinel", "common", 24, 7, 3, 9, 4, 3),
++  u("wick", "Wick", "of the Backroads", "outrider", "common", 20, 6, 6, 5, 5, 4),
++  u("tamsin", "Tamsin", "Quickblade", "duelist", "common", 18, 5, 8, 3, 7, 5),
++  u("orrick", "Orrick", "Timberfell", "berserker", "common", 26, 9, 4, 4, 3, 2),
++  u("perrin", "Perrin", "Hedgebow", "ranger", "common", 19, 6, 6, 3, 6, 4),
++  u("liora", "Liora", "Candlewise", "mender", "common", 17, 3, 5, 3, 5, 8),
++  u("edda", "Edda", "Sparkscript", "arcanist", "common", 17, 7, 5, 2, 6, 4),
++  u("colm", "Colm", "Greyfoot", "duelist", "common", 19, 5, 7, 4, 6, 4),
++
++  // ---- Uncommon ----
++  u("sable", "Sable", "Winterlance", "skyrider", "uncommon", 20, 7, 9, 4, 7, 5),
++  u("gunnar", "Gunnar", "Oakbreaker", "berserker", "uncommon", 29, 11, 5, 5, 4, 3),
++  u("maren", "Maren", "of the Vale", "outrider", "uncommon", 23, 8, 7, 6, 6, 5),
++  u("iseld", "Iseld", "Stormquill", "arcanist", "uncommon", 19, 9, 6, 3, 8, 4),
++  u("dain", "Dain", "Wallwarden", "sentinel", "uncommon", 28, 8, 3, 12, 5, 3),
++  u("rhosyn", "Rhosyn", "Truefeather", "ranger", "uncommon", 21, 8, 8, 4, 9, 5),
++
++  // ---- Rare ----
++  u("kestrel", "Kestrel", "Dawnwing", "skyrider", "rare", 23, 9, 12, 5, 10, 7),
++  u("veyla", "Veyla", "Emberveil", "arcanist", "rare", 21, 12, 8, 4, 10, 6),
++  u("aldric", "Aldric", "the Unbroken", "sentinel", "rare", 32, 10, 4, 14, 7, 5),
++  u("nyx", "Nyx", "Threadcutter", "duelist", "rare", 22, 9, 13, 5, 12, 8),
++  u("solenne", "Solenne", "Lightmother", "mender", "rare", 22, 5, 8, 6, 8, 12),
++
++  // ---- Legendary ----
++  u("caelen", "Caelen", "Heir of Veyra", "duelist", "legendary", 26, 12, 13, 8, 13, 11),
++  u("morrigan", "Morrigan", "the Last Tempest", "arcanist", "legendary", 24, 15, 10, 6, 13, 8),
++  u("brannoc", "Brannoc", "Worldsplitter", "berserker", "legendary", 36, 16, 8, 8, 9, 6),
++];
++
++const RARITY_WEIGHT: Record<Rarity, number> = {
++  common: 700,
++  uncommon: 220,
++  rare: 70,
++  legendary: 10,
++};
++
++/** Weighted random recruit — drop-in replacement for getRandomPokemonSpeciesName. */
++export function recruitRandomUnit(rng: () => number = Math.random): Unit {
++  const total = ROSTER.reduce((s, x) => s + RARITY_WEIGHT[x.rarity], 0);
++  let roll = rng() * total;
++  for (const unit of ROSTER) {
++    roll -= RARITY_WEIGHT[unit.rarity];
++    if (roll < 0) return unit;
++  }
++  return ROSTER[0];
++}
++
++export function getUnitById(id: string): Unit | undefined {
++  return ROSTER.find((x) => x.id === id);
++}
++
++// compact constructor
++function u(
++  id: string,
++  name: string,
++  epithet: string,
++  unitClass: Unit["unitClass"],
++  rarity: Rarity,
++  hp: number,
++  atk: number,
++  spd: number,
++  def: number,
++  skl: number,
++  lck: number,
++): Unit {
++  const weapon = {
++    duelist: "sword",
++    sentinel: "lance",
++    outrider: "lance",
++    berserker: "axe",
++    skyrider: "lance",
++    ranger: "bow",
++    arcanist: "tome",
++    mender: "staff",
++  }[unitClass] as Unit["weapon"];
++  return {
++    id,
++    name,
++    epithet,
++    unitClass,
++    weapon,
++    rarity,
++    base: { hp, atk, spd, def, skl, lck },
++  };
++}
+diff --git a/src/worker/commands.ts b/src/worker/commands.ts
+index c53d223..e7ffb22 100644
+--- a/src/worker/commands.ts
++++ b/src/worker/commands.ts
+@@ -4,11 +4,22 @@ export type PokeCommand =
+   | "inventory"
+   | "help"
+   | "status"
+-  | "last";
++  | "last"
++  | "duel"
++  | "accept"
++  | "decline"
++  | "gold"
++  | "shop"
++  | "buy";
+ 
+ const COMMANDS: Record<string, PokeCommand> = {
+   attack: "attack",
+   a: "attack",
++  fight: "attack",
++  f: "attack",
++  muster: "welcome-pack",
++  m: "welcome-pack",
++  army: "inventory",
+   welcomepack: "welcome-pack",
+   wp: "welcome-pack",
+   inventory: "inventory",
+@@ -19,8 +30,24 @@ const COMMANDS: Record<string, PokeCommand> = {
+   s: "status",
+   last: "last",
+   l: "last",
++  duel: "duel",
++  d: "duel",
++  accept: "accept",
++  decline: "decline",
++  gold: "gold",
++  g: "gold",
++  shop: "shop",
++  buy: "buy",
+ };
+ 
++/** Third token of the message, e.g. "!fe duel @rival" -> "rival". */
++export function parseCommandArg(message: string): string | null {
++  const parts = message.trim().toLowerCase().split(/\s+/);
++  const arg = parts[2];
++  if (!arg) return null;
++  return arg.replace(/^@/, "");
++}
++
+ function normalizeChannel(channel: string) {
+   return channel.replace(/^#/, "").trim().toLowerCase();
+ }
+@@ -43,7 +70,7 @@ export function getChannelSyncPlan(
+ export function parsePokeCommand(message: string): PokeCommand | null {
+   const [root, command] = message.trim().toLowerCase().split(/\s+/);
+ 
+-  if (root !== "!poke" || !command) {
++  if ((root !== "!fe" && root !== "!poke") || !command) {
+     return null;
+   }
+ 
+diff --git a/src/worker/game.test.ts b/src/worker/game.test.ts
+index e3376fe..8ff9eed 100644
+--- a/src/worker/game.test.ts
++++ b/src/worker/game.test.ts
+@@ -1,6 +1,14 @@
+ import type tmi from "tmi.js";
+ import { describe, expect, it } from "vitest";
+ 
++const economyStubs = {
++  getUserUnitIds: async () => [],
++  earnGold: async () => 0,
++  getGold: async () => 0,
++  buyWeapon: async () => ({ ok: false, gold: 0 }),
++  useEquippedWeapon: async () => null,
++};
++
+ import { PokemonGame, type GameStore } from "./game";
+ 
+ function createChatClient() {
+@@ -17,6 +25,7 @@ function createChatClient() {
+ describe("PokemonGame", () => {
+   it("answers help, status, and last-catch commands on demand", async () => {
+     const store = {
++    ...economyStubs,
+       ensureEncounter: async () => undefined,
+       attack: async () => ({
+         outcome: "hit" as const,
+@@ -44,15 +53,15 @@ describe("PokemonGame", () => {
+       {
+         channel: "streamer",
+         message:
+-          "Pokitch: !poke attack | status | last | inventory | welcomepack",
++          "Emblem: !fe fight | duel @user | accept | gold | shop | buy <item> | army | muster | status | last",
+       },
+       {
+         channel: "streamer",
+-        message: "Wild pikachu has 32/50 HP.",
++        message: "Pikachu stands at 32/50 HP.",
+       },
+       {
+         channel: "streamer",
+-        message: "Last catch: @winner caught mew.",
++        message: "Latest recruit: @winner recruited Mew.",
+       },
+     ]);
+   });
+@@ -60,6 +69,7 @@ describe("PokemonGame", () => {
+   it("processes an attack atomically through the game store", async () => {
+     const attacks: Parameters<GameStore["attack"]>[0][] = [];
+     const store: GameStore = {
++      ...economyStubs,
+       ensureEncounter: async () => undefined,
+       attack: async (input) => {
+         attacks.push(input);
+@@ -104,6 +114,7 @@ describe("PokemonGame", () => {
+ 
+   it("announces a caught Pokemon in chat", async () => {
+     const store: GameStore = {
++      ...economyStubs,
+       ensureEncounter: async () => undefined,
+       attack: async () => ({
+         outcome: "caught",
+@@ -134,7 +145,7 @@ describe("PokemonGame", () => {
+     expect(messages).toEqual([
+       {
+         channel: "streamer",
+-        message: "🎉 @viewer caught Mew! A wild Eevee has appeared.",
++        message: "⚔️ @viewer bested and recruited Mew! Eevee approaches...",
+       },
+     ]);
+   });
+@@ -142,6 +153,7 @@ describe("PokemonGame", () => {
+   it("claims a welcome pack once using the stable Twitch identity", async () => {
+     const claims: Parameters<GameStore["claimWelcomePack"]>[0][] = [];
+     const store: GameStore = {
++      ...economyStubs,
+       ensureEncounter: async () => undefined,
+       attack: async () => ({
+         outcome: "hit",
+@@ -182,13 +194,14 @@ describe("PokemonGame", () => {
+     expect(messages).toEqual([
+       {
+         channel: "streamer",
+-        message: "@viewer received bulbasaur as a welcome pack!",
++        message: "@viewer mustered Bulbasaur into their army!",
+       },
+     ]);
+   });
+ 
+   it("reports an already claimed welcome pack without inserting another", async () => {
+     const store: GameStore = {
++      ...economyStubs,
+       ensureEncounter: async () => undefined,
+       attack: async () => ({
+         outcome: "hit",
+@@ -226,6 +239,7 @@ describe("PokemonGame", () => {
+   it("initializes a channel through an idempotent store operation", async () => {
+     const encounters: Array<{ channel: string; poke: string }> = [];
+     const store: GameStore = {
++      ...economyStubs,
+       ensureEncounter: async (input) => {
+         encounters.push(input);
+       },
+diff --git a/src/worker/game.ts b/src/worker/game.ts
+index 26cf034..b68c474 100644
+--- a/src/worker/game.ts
++++ b/src/worker/game.ts
+@@ -1,6 +1,19 @@
+ import type tmi from "tmi.js";
+ 
+-import { getRandomPokemonSpeciesName } from "@/utils/pokemon-species";
++import { GOLD, STAFF_BONUS_HP, findShopItem, shopListing } from "@/features/economy/shop";
++import { DuelManager, pickChampion, resolveDuel } from "@/features/units/duel";
++import type { Unit } from "@/features/units/model";
++import { recruitRandomUnit, getUnitById } from "@/features/units/roster";
++
++function randomUnitId(): Promise<string> {
++  return Promise.resolve(recruitRandomUnit().id);
++}
++
++function displayUnit(id: string): string {
++  const unit = getUnitById(id);
++  if (!unit) return id.charAt(0).toUpperCase() + id.slice(1);
++  return `${unit.name} ${unit.epithet} [${unit.rarity}]`;
++}
+ 
+ import type { PokeCommand } from "./commands";
+ 
+@@ -42,7 +55,21 @@ export type WelcomePackInput = GamePlayer & {
+   poke: string;
+ };
+ 
++export type EquippedWeapon = { kind: string; uses: number } | null;
++
+ export interface GameStore {
++  // eslint-disable-next-line no-unused-vars
++  getUserUnitIds(_input: { channel: string; user: string }): Promise<string[]>;
++  // eslint-disable-next-line no-unused-vars
++  earnGold(_input: { channel: string; user: string; amount: number }): Promise<number>;
++  // eslint-disable-next-line no-unused-vars
++  getGold(_input: { channel: string; user: string }): Promise<number>;
++  buyWeapon(
++    // eslint-disable-next-line no-unused-vars
++    _input: { channel: string; user: string; kind: string; price: number; uses: number },
++  ): Promise<{ ok: boolean; gold: number }>;
++  // eslint-disable-next-line no-unused-vars
++  useEquippedWeapon(_input: { channel: string; user: string }): Promise<EquippedWeapon>;
+   // eslint-disable-next-line no-unused-vars
+   ensureEncounter(_input: { channel: string; poke: string }): Promise<void>;
+   // eslint-disable-next-line no-unused-vars
+@@ -65,7 +92,7 @@ type GameDependencies = {
+ };
+ 
+ const defaultDependencies: GameDependencies = {
+-  getRandomPokemon: getRandomPokemonSpeciesName,
++  getRandomPokemon: randomUnitId,
+   rollDamage: () => Math.floor(Math.random() * 10) + 5,
+ };
+ 
+@@ -73,6 +100,7 @@ export class PokemonGame {
+   private readonly store: GameStore;
+   private readonly appUrl: string;
+   private readonly dependencies: GameDependencies;
++  private readonly duels = new DuelManager();
+ 
+   constructor(
+     store: GameStore,
+@@ -96,11 +124,40 @@ export class PokemonGame {
+     client: tmi.Client,
+     channel: string,
+     player: GamePlayer,
++    arg: string | null = null,
+   ) {
+     if (command === "help") {
+       await client.say(
+         channel,
+-        "Pokitch: !poke attack | status | last | inventory | welcomepack",
++        "Emblem: !fe fight | duel @user | accept | gold | shop | buy <item> | army | muster | status | last",
++      );
++      return;
++    }
++    if (command === "gold") {
++      const gold = await this.store.getGold({ channel, user: player.username });
++      await client.say(channel, `@${player.username} has ${gold} gold.`);
++      return;
++    }
++    if (command === "shop") {
++      await client.say(channel, `Market (30 uses each): ${shopListing()} — !fe buy <item>`);
++      return;
++    }
++    if (command === "buy") {
++      return this.buy(client, channel, player, arg);
++    }
++    if (command === "duel") {
++      return this.challenge(client, channel, player, arg);
++    }
++    if (command === "accept") {
++      return this.acceptDuel(client, channel, player);
++    }
++    if (command === "decline") {
++      const challenger = this.duels.decline(channel, player.username);
++      await client.say(
++        channel,
++        challenger
++          ? `@${player.username} declined @${challenger}'s challenge.`
++          : `@${player.username}, no one has challenged you.`,
+       );
+       return;
+     }
+@@ -109,7 +166,7 @@ export class PokemonGame {
+       await client.say(
+         channel,
+         status
+-          ? `Wild ${status.poke} has ${status.health}/50 HP.`
++          ? `${displayUnit(status.poke)} stands at ${status.health}/50 HP.`
+           : "There is no active encounter right now.",
+       );
+       return;
+@@ -119,8 +176,8 @@ export class PokemonGame {
+       await client.say(
+         channel,
+         caught
+-          ? `Last catch: @${caught.username} caught ${caught.poke}.`
+-          : "No catches have been recorded in this channel yet.",
++          ? `Latest recruit: @${caught.username} recruited ${displayUnit(caught.poke)}.`
++          : "No recruits have joined in this channel yet.",
+       );
+       return;
+     }
+@@ -156,7 +213,7 @@ export class PokemonGame {
+ 
+     await client.say(
+       channel,
+-      `@${player.username} received ${result.poke ?? poke} as a welcome pack!`,
++      `@${player.username} mustered ${displayUnit(result.poke ?? poke)} into their army!`,
+     );
+   }
+ 
+@@ -190,13 +247,106 @@ export class PokemonGame {
+       username: player.username,
+     });
+ 
++    if (result.outcome === "hit") {
++      await this.store.earnGold({ channel, user: player.username, amount: GOLD.bossHit });
++    }
+     if (result.outcome === "caught") {
+-      const caughtPoke = result.poke.charAt(0).toUpperCase() + result.poke.slice(1);
+-      const nextPoke = result.nextPoke.charAt(0).toUpperCase() + result.nextPoke.slice(1);
++      await this.store.earnGold({ channel, user: player.username, amount: GOLD.recruit });
+       await client.say(
+         channel,
+-        `🎉 @${player.username} caught ${caughtPoke}! A wild ${nextPoke} has appeared.`
++        `⚔️ @${player.username} bested and recruited ${displayUnit(result.poke)}! ${displayUnit(result.nextPoke)} approaches...`
+       );
+     }
+   }
+-}
++
++  private async buy(
++    client: tmi.Client,
++    channel: string,
++    player: GamePlayer,
++    arg: string | null,
++  ) {
++    const item = arg ? findShopItem(arg) : undefined;
++    if (!item) {
++      await client.say(channel, `@${player.username}, choose an item: ${shopListing()}`);
++      return;
++    }
++    const result = await this.store.buyWeapon({
++      channel,
++      user: player.username,
++      kind: item.kind,
++      price: item.price,
++      uses: item.uses,
++    });
++    await client.say(
++      channel,
++      result.ok
++        ? `@${player.username} bought a ${item.label} (${item.uses} uses). ${result.gold}g left.`
++        : `@${player.username}, not enough gold (${item.price}g needed, you have ${result.gold}g).`,
++    );
++  }
++
++  private async challenge(
++    client: tmi.Client,
++    channel: string,
++    player: GamePlayer,
++    arg: string | null,
++  ) {
++    if (!arg || arg === player.username) {
++      await client.say(channel, `@${player.username}, use: !fe duel @rival`);
++      return;
++    }
++    this.duels.challenge(channel, player.username, arg);
++    await client.say(
++      channel,
++      `⚔️ @${player.username} challenges @${arg} to a duel! Type "!fe accept" within 60s.`,
++    );
++  }
++
++  private async championFor(channel: string, user: string): Promise<Unit | null> {
++    const ids = await this.store.getUserUnitIds({ channel, user });
++    const units = ids
++      .map((id) => getUnitById(id))
++      .filter((x): x is Unit => Boolean(x));
++    return pickChampion(units);
++  }
++
++  private async acceptDuel(client: tmi.Client, channel: string, player: GamePlayer) {
++    const challenger = this.duels.accept(channel, player.username);
++    if (!challenger) {
++      await client.say(channel, `@${player.username}, no live challenge (they expire after 60s).`);
++      return;
++    }
++    const [unitA, unitB] = await Promise.all([
++      this.championFor(channel, challenger),
++      this.championFor(channel, player.username),
++    ]);
++    if (!unitA || !unitB) {
++      const missing = !unitA ? challenger : player.username;
++      await client.say(channel, `@${missing} has no units yet — grab one with !fe muster.`);
++      return;
++    }
++    const [weaponA, weaponB] = await Promise.all([
++      this.store.useEquippedWeapon({ channel, user: challenger }),
++      this.store.useEquippedWeapon({ channel, user: player.username }),
++    ]);
++    const fighter = (username: string, unit: Unit, w: EquippedWeapon) => ({
++      username,
++      unit,
++      weapon: w && w.kind !== "staff" ? (w.kind as Unit["weapon"]) : undefined,
++      bonusHp: w?.kind === "staff" ? STAFF_BONUS_HP : 0,
++    });
++    const result = resolveDuel(
++      fighter(challenger, unitA, weaponA),
++      fighter(player.username, unitB, weaponB),
++    );
++    await Promise.all([
++      this.store.earnGold({ channel, user: result.winner, amount: GOLD.duelWin }),
++      this.store.earnGold({ channel, user: result.loser, amount: GOLD.duelLoss }),
++    ]);
++    const winnerUnit = result.winner === challenger ? unitA : unitB;
++    await client.say(
++      channel,
++      `🏆 @${result.winner}'s ${winnerUnit.name} ${winnerUnit.epithet} wins the duel against @${result.loser} in ${result.rounds} rounds! +${GOLD.duelWin}g (loser +${GOLD.duelLoss}g).`,
++    );
++  }
++}
+\ No newline at end of file
+diff --git a/src/worker/message-handler.ts b/src/worker/message-handler.ts
+index a60b047..f6a2550 100644
+--- a/src/worker/message-handler.ts
++++ b/src/worker/message-handler.ts
+@@ -3,6 +3,7 @@ import type tmi from "tmi.js";
+ import {
+   type ChannelQueue,
+   type CommandGate,
++  parseCommandArg,
+   parseGamePlayer,
+   parsePokeCommand,
+ } from "./commands";
+@@ -41,7 +42,8 @@ export async function handleChatMessage({
+   const channel = rawChannel.replace(/^#/, "").toLowerCase();
+   if (!commandGate.consume(command, channel, player.twitchId)) return;
+ 
++  const arg = parseCommandArg(message);
+   await queue.run(channel, () =>
+-    game.handle(command, client, channel, player),
++    game.handle(command, client, channel, player, arg),
+   );
+ }
+diff --git a/src/worker/store.ts b/src/worker/store.ts
+index 09dd271..5c47ad0 100644
+--- a/src/worker/store.ts
++++ b/src/worker/store.ts
+@@ -85,4 +85,62 @@ export class SupabaseGameStore implements GameStore {
+ 
+     return data as { granted: boolean; poke?: string };
+   }
+-}
++
++  async getUserUnitIds(input: { channel: string; user: string }) {
++    const { data, error } = await this.client
++      .from("collections")
++      .select("poke")
++      .eq("channel", input.channel)
++      .eq("user", input.user);
++    if (error) throw error;
++    return (data ?? []).map((row: { poke: string }) => row.poke);
++  }
++
++  async earnGold(input: { channel: string; user: string; amount: number }) {
++    const { data, error } = await this.client.rpc("fe_earn_gold", {
++      p_channel: input.channel,
++      p_user: input.user,
++      p_amount: input.amount,
++    });
++    if (error) throw error;
++    return data as number;
++  }
++
++  async getGold(input: { channel: string; user: string }) {
++    const { data, error } = await this.client
++      .from("wallets")
++      .select("gold")
++      .eq("channel", input.channel)
++      .eq("user", input.user)
++      .maybeSingle();
++    if (error) throw error;
++    return data?.gold ?? 0;
++  }
++
++  async buyWeapon(input: {
++    channel: string;
++    user: string;
++    kind: string;
++    price: number;
++    uses: number;
++  }) {
++    const { data, error } = await this.client.rpc("fe_buy_weapon", {
++      p_channel: input.channel,
++      p_user: input.user,
++      p_kind: input.kind,
++      p_price: input.price,
++      p_uses: input.uses,
++    });
++    if (error) throw error;
++    return data as { ok: boolean; gold: number };
++  }
++
++  async useEquippedWeapon(input: { channel: string; user: string }) {
++    const { data, error } = await this.client.rpc("fe_use_equipped_weapon", {
++      p_channel: input.channel,
++      p_user: input.user,
++    });
++    if (error) throw error;
++    return data as { kind: string; uses: number } | null;
++  }
++}
+\ No newline at end of file
+diff --git a/supabase/migrations/20260908000000_fe_economy.sql b/supabase/migrations/20260908000000_fe_economy.sql
+new file mode 100644
+index 0000000..ee7aaa8
+--- /dev/null
++++ b/supabase/migrations/20260908000000_fe_economy.sql
+@@ -0,0 +1,132 @@
++begin;
++
++-- Gold wallets, scoped per channel like collections.
++create table if not exists public.wallets (
++  id uuid primary key default extensions.uuid_generate_v4(),
++  "user" text not null,
++  channel text not null,
++  gold integer not null default 0 check (gold >= 0),
++  created_at timestamptz not null default now(),
++  updated_at timestamptz not null default now(),
++  unique ("user", channel)
++);
++
++-- Purchased weapons with durability (Hudson: 30 uses each).
++create table if not exists public.weapons (
++  id uuid primary key default extensions.uuid_generate_v4(),
++  "user" text not null,
++  channel text not null,
++  kind text not null check (kind in ('sword','lance','axe','tome','staff')),
++  uses smallint not null default 30 check (uses >= 0),
++  created_at timestamptz not null default now(),
++  updated_at timestamptz not null default now()
++);
++
++create index if not exists weapons_owner_idx on public.weapons ("user", channel);
++
++alter table public.wallets enable row level security;
++alter table public.weapons enable row level security;
++
++-- Readable by everyone (leaderboards / collection pages), writable only via RPCs.
++create policy "wallets are readable" on public.wallets for select using (true);
++create policy "weapons are readable" on public.weapons for select using (true);
++
++-- Atomically add gold, creating the wallet on first earn. Returns new balance.
++create or replace function public.fe_earn_gold(
++  p_channel text,
++  p_user text,
++  p_amount integer
++) returns integer
++language plpgsql
++security definer
++set search_path = ''
++as $$
++declare
++  new_gold integer;
++begin
++  insert into public.wallets ("user", channel, gold)
++  values (p_user, p_channel, greatest(p_amount, 0))
++  on conflict ("user", channel)
++  do update set gold = public.wallets.gold + greatest(p_amount, 0),
++                updated_at = now()
++  returning gold into new_gold;
++  return new_gold;
++end;
++$$;
++
++-- Atomically deduct gold and grant a weapon. Returns {ok, gold}.
++create or replace function public.fe_buy_weapon(
++  p_channel text,
++  p_user text,
++  p_kind text,
++  p_price integer,
++  p_uses integer
++) returns jsonb
++language plpgsql
++security definer
++set search_path = ''
++as $$
++declare
++  current_gold integer;
++begin
++  select gold into current_gold
++  from public.wallets
++  where "user" = p_user and channel = p_channel
++  for update;
++
++  if current_gold is null or current_gold < p_price then
++    return jsonb_build_object('ok', false, 'gold', coalesce(current_gold, 0));
++  end if;
++
++  update public.wallets
++  set gold = gold - p_price, updated_at = now()
++  where "user" = p_user and channel = p_channel
++  returning gold into current_gold;
++
++  insert into public.weapons ("user", channel, kind, uses)
++  values (p_user, p_channel, p_kind, p_uses);
++
++  return jsonb_build_object('ok', true, 'gold', current_gold);
++end;
++$$;
++
++-- Consume one use of the newest weapon that still has durability.
++-- Returns {kind, uses} (uses AFTER decrement) or null if unarmed.
++create or replace function public.fe_use_equipped_weapon(
++  p_channel text,
++  p_user text
++) returns jsonb
++language plpgsql
++security definer
++set search_path = ''
++as $$
++declare
++  w record;
++begin
++  select id, kind, uses into w
++  from public.weapons
++  where "user" = p_user and channel = p_channel and uses > 0
++  order by created_at desc
++  limit 1
++  for update;
++
++  if w is null then
++    return null;
++  end if;
++
++  update public.weapons
++  set uses = uses - 1, updated_at = now()
++  where id = w.id;
++
++  return jsonb_build_object('kind', w.kind, 'uses', w.uses - 1);
++end;
++$$;
++
++revoke all on function public.fe_earn_gold(text, text, integer) from public, anon, authenticated;
++revoke all on function public.fe_buy_weapon(text, text, text, integer, integer) from public, anon, authenticated;
++revoke all on function public.fe_use_equipped_weapon(text, text) from public, anon, authenticated;
++grant execute on function public.fe_earn_gold(text, text, integer) to service_role;
++grant execute on function public.fe_buy_weapon(text, text, text, integer, integer) to service_role;
++grant execute on function public.fe_use_equipped_weapon(text, text) to service_role;
++
++commit;
