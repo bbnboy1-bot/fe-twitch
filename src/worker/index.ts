@@ -1,3 +1,9 @@
+import http from "node:http";
+http.createServer((_req, res) => {
+  res.writeHead(200);
+  res.end("ok");
+}).listen(Number(process.env.PORT) || 3001);
+
 import { createServer } from "node:http";
 
 import tmi from "tmi.js";
