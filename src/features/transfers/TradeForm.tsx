@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createTradeAction } from "@/features/transfers/actions";
+import { getUnitFullTitle } from "@/features/units/presentation";
 import {
   initialTransferState,
   type CollectionOption,
@@ -63,13 +64,13 @@ export function TradeForm({
           <FieldLabel>You offer</FieldLabel>
           <Select name="offeredCollectionId" required>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Choose your Pokémon" />
+              <SelectValue placeholder="Choose your unit" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 {owned.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {item.poke}
+                    {getUnitFullTitle(item.poke)}
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -77,13 +78,13 @@ export function TradeForm({
           </Select>
         </Field>
         <Field>
-          <FieldLabel>Collector</FieldLabel>
+          <FieldLabel>Commander</FieldLabel>
           <Select
             value={collector}
             onValueChange={(value) => void loadCollector(value)}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Choose a collector" />
+              <SelectValue placeholder="Choose a commander" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -105,14 +106,14 @@ export function TradeForm({
           >
             <SelectTrigger className="w-full">
               <SelectValue
-                placeholder={loading ? "Loading…" : "Choose their Pokémon"}
+                placeholder={loading ? "Loading…" : "Choose their unit"}
               />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 {requested.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {item.poke}
+                    {getUnitFullTitle(item.poke)}
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -123,7 +124,7 @@ export function TradeForm({
       {loadError ? (
         <Alert variant="warning">
           <AlertDescription>
-            This collector&apos;s Pokémon could not be loaded. Choose them again
+            This commander&apos;s units could not be loaded. Choose them again
             or retry in a moment.
           </AlertDescription>
         </Alert>

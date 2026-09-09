@@ -20,16 +20,16 @@ export function SignInPrompt({
   description: string;
 }) {
   return (
-    <Card className="game-panel max-w-2xl border-2 shadow-none">
+    <Card className="game-panel max-w-2xl shadow-none">
       <CardHeader className="gap-4 px-5 pt-5 text-center tablet:px-7 tablet:pt-7">
         <div className="flex flex-col items-center gap-4">
           <div className="space-y-2">
-            <p className="game-kicker">Quest gate</p>
-            <CardTitle className="text-3xl font-black tracking-tight tablet:text-4xl">
+            <p className="game-kicker">Sign in</p>
+            <CardTitle className="font-heading text-3xl font-bold tablet:text-4xl">
               {title}
             </CardTitle>
           </div>
-          <div className="media-surface flex size-14 shrink-0 items-center justify-center border-2 border-border">
+          <div className="media-surface flex size-14 shrink-0 items-center justify-center border border-border">
             <ShieldAlert className="size-7 text-primary" />
           </div>
         </div>
@@ -38,13 +38,13 @@ export function SignInPrompt({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4 px-5 pb-5 text-center tablet:px-7 tablet:pb-7">
-        <div className="grid gap-2 border-2 border-border bg-muted/35 p-4">
-          <div className="flex items-center justify-center gap-2 font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-primary">
+        <div className="grid gap-2 border border-border bg-muted/35 p-4">
+          <div className="game-kicker flex items-center justify-center gap-2">
             <Sparkles className="size-3.5" />
-            Terminal locked
+            Twitch sign-in required
           </div>
           <p className="text-sm text-muted-foreground">
-            Connect your Twitch account to access collector actions and keep
+            Connect your Twitch account to manage your army and keep
             transfers tied to your identity.
           </p>
         </div>

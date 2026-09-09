@@ -1,4 +1,5 @@
 import { Check, Trash2, X } from "lucide-react";
+import { getUnitDisplayName } from "@/features/units/presentation";
 
 import { Button } from "@/components/ui/button";
 import { decideTradeAction } from "@/features/transfers/actions";
@@ -34,9 +35,9 @@ export function TradeList({
             >
               <div>
                 <p className="font-medium">
-                  <span className="capitalize">{trade.poke}</span>
+                  <span>{getUnitDisplayName(trade.poke)}</span>
                   <span className="mx-2 text-muted-foreground">↔</span>
-                  <span className="capitalize">{trade.recipientpoke}</span>
+                  <span>{getUnitDisplayName(trade.recipientpoke)}</span>
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {mode === "sent"

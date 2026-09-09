@@ -14,8 +14,8 @@ export default async function TradePage() {
       <section className="container py-10 tablet:py-14">
         <SignInPrompt
           destination="/trade"
-          title="Sign in to trade Pokémon"
-          description="Sign in with Twitch to create offers and review trades sent by other collectors."
+          title="Sign in to trade units"
+          description="Sign in with Twitch to make offers and review trades sent by other commanders."
         />
       </section>
     );
@@ -26,13 +26,12 @@ export default async function TradePage() {
   return (
     <section className="container grid max-w-6xl gap-8 py-10 tablet:py-14">
       <div>
-        <p className="game-kicker">Trade terminal</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight tablet:text-5xl">
-          Exchange Pokémon safely
+        <p className="game-kicker">Trades</p>
+        <h1 className="mt-2 font-heading text-3xl font-bold tablet:text-5xl">
+          Trade units with other commanders
         </h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          Offers stay pending until the receiving collector accepts or denies
-          them.
+          Offers stay pending until the other commander accepts or declines.
         </p>
       </div>
       <div className="game-panel p-5 tablet:p-7">

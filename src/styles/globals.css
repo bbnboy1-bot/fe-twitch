@@ -4,24 +4,25 @@
 
 @layer base {
   .theme {
-    --font-heading: var(--font-custom), ui-sans-serif, system-ui, sans-serif;
+    --font-heading: var(--font-display), Georgia, serif;
     --font-sans: var(--font-custom), ui-sans-serif, system-ui, sans-serif;
   }
   :root {
-    --background: 0.16 0.035 274;
-    --foreground: 0.97 0.015 92;
-    --card: 0.205 0.045 273;
-    --card-foreground: 0.97 0.015 92;
-    --popover: 0.205 0.045 273;
-    --popover-foreground: 0.97 0.015 92;
-    --primary: 0.84 0.16 91;
-    --primary-foreground: 0.19 0.04 273;
-    --secondary: 0.29 0.08 285;
-    --secondary-foreground: 0.97 0.015 92;
-    --muted: 0.25 0.045 274;
-    --muted-foreground: 0.73 0.035 274;
-    --accent: 0.69 0.17 323;
-    --accent-foreground: 0.98 0.01 95;
+    /* Midnight steel + gilt: the war-room palette of Veyra. */
+    --background: 0.17 0.03 258;
+    --foreground: 0.95 0.012 85;
+    --card: 0.21 0.035 256;
+    --card-foreground: 0.95 0.012 85;
+    --popover: 0.21 0.035 256;
+    --popover-foreground: 0.95 0.012 85;
+    --primary: 0.83 0.13 82;
+    --primary-foreground: 0.2 0.04 70;
+    --secondary: 0.3 0.06 252;
+    --secondary-foreground: 0.95 0.012 85;
+    --muted: 0.25 0.035 256;
+    --muted-foreground: 0.72 0.025 256;
+    --accent: 0.6 0.2 25;
+    --accent-foreground: 0.98 0.01 85;
     --destructive: 0.58 0.22 28;
     --destructive-foreground: 0.98 0.018 86;
     --success: 0.67 0.17 145;
@@ -30,18 +31,18 @@
     --warning-foreground: 0.2 0.04 85;
     --info: 0.68 0.14 245;
     --info-foreground: 0.16 0.035 245;
-    --border: 0.39 0.075 278;
-    --input: 0.39 0.075 278;
-    --ring: 0.84 0.16 91;
-    --surface: 0.23 0.055 274;
+    --border: 0.36 0.05 256;
+    --input: 0.36 0.05 256;
+    --ring: 0.83 0.13 82;
+    --surface: 0.23 0.04 256;
     --surface-foreground: 0.98 0.018 86;
-    --shadow: 0.1 0.025 274;
+    --shadow: 0.1 0.02 258;
     --chart-1: 0.75 0.17 74;
     --chart-2: 0.66 0.14 44;
     --chart-3: 0.55 0.16 255;
     --chart-4: 0.64 0.15 142;
     --chart-5: 0.62 0.19 25;
-    --radius: 0.65rem;
+    --radius: 0.4rem;
     --sidebar: 0.18 0.009 75;
     --sidebar-foreground: 0.98 0.018 86;
     --sidebar-primary: 0.75 0.17 74;
@@ -57,17 +58,22 @@
   body {
     @apply min-h-screen bg-background text-foreground antialiased;
     background-image:
-      linear-gradient(oklch(var(--border) / 0.1) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(var(--border) / 0.1) 1px, transparent 1px),
       radial-gradient(
-        circle at 50% -20%,
-        oklch(var(--secondary) / 0.7),
-        transparent 45%
+        ellipse at 50% -10%,
+        oklch(var(--secondary) / 0.55),
+        transparent 55%
+      ),
+      repeating-linear-gradient(
+        45deg,
+        oklch(var(--border) / 0.07) 0 1px,
+        transparent 1px 28px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        oklch(var(--border) / 0.07) 0 1px,
+        transparent 1px 28px
       );
-    background-size:
-      32px 32px,
-      32px 32px,
-      100% 100%;
+    background-size: 100% 100%, 40px 40px, 40px 40px;
     background-attachment: fixed;
   }
   html {
@@ -82,53 +88,19 @@
 }
 
 @layer components {
+  /* Heraldic frame: outer border plus an inset gilt hairline. */
   .game-panel {
-    @apply relative border-2 border-border bg-card;
-    box-shadow: 6px 6px 0 oklch(var(--shadow) / 0.8);
+    @apply relative border border-border bg-card;
+    box-shadow:
+      inset 0 0 0 1px oklch(var(--background)),
+      inset 0 0 0 2px oklch(var(--primary) / 0.35),
+      0 12px 30px -18px oklch(var(--shadow));
   }
 
   .pixel-shadow {
-    box-shadow: 4px 4px 0 oklch(var(--shadow) / 0.8);
+    box-shadow: 0 8px 20px -12px oklch(var(--shadow));
   }
 
-  .pokeball-mark {
-    position: relative;
-    overflow: hidden;
-    border: 2px solid oklch(0.18 0.01 20);
-    border-radius: 999px;
-    background:
-      linear-gradient(
-        to bottom,
-        oklch(0.64 0.23 25) 0 47%,
-        oklch(0.16 0.01 20) 47% 53%,
-        oklch(0.98 0 0) 53% 100%
-      );
-    box-shadow:
-      inset 0 -2px 0 rgb(0 0 0 / 0.18),
-      4px 4px 0 oklch(var(--shadow) / 0.7);
-  }
-
-  .pokeball-mark::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at 30% 22%, rgb(255 255 255 / 0.65), transparent 22%),
-      radial-gradient(circle at 50% 50%, transparent 0 32%, oklch(0.16 0.01 20) 32% 38%, transparent 38%);
-  }
-
-  .pokeball-mark__button {
-    position: relative;
-    z-index: 1;
-    width: 0.9rem;
-    height: 0.9rem;
-    border: 2px solid oklch(0.16 0.01 20);
-    border-radius: 999px;
-    background: oklch(0.98 0 0);
-    box-shadow:
-      0 0 0 3px oklch(0.16 0.01 20),
-      inset 0 1px 0 rgb(255 255 255 / 0.8);
-  }
 
   .media-surface {
     background: radial-gradient(
@@ -139,23 +111,23 @@
   }
 
   .game-kicker {
-    @apply font-mono text-[11px] font-bold uppercase tracking-[0.18em] text-primary;
+    @apply font-heading text-sm italic text-primary;
+  }
+
+  .crest-mark {
+    display: inline-grid;
+    place-items: center;
+    color: oklch(var(--primary));
   }
 
   .pixel-corners {
     clip-path: polygon(
-      0 8px,
-      8px 8px,
-      8px 0,
-      calc(100% - 8px) 0,
-      calc(100% - 8px) 8px,
-      100% 8px,
-      100% calc(100% - 8px),
-      calc(100% - 8px) calc(100% - 8px),
-      calc(100% - 8px) 100%,
-      8px 100%,
-      8px calc(100% - 8px),
-      0 calc(100% - 8px)
+      50% 0,
+      100% 25%,
+      100% 75%,
+      50% 100%,
+      0 75%,
+      0 25%
     );
   }
 
@@ -223,11 +195,9 @@
   .overlay-sprite {
     width: auto;
     max-width: 100%;
-    height: auto;
-    max-height: 100%;
-    object-fit: contain;
-    image-rendering: pixelated;
-    animation: 
+    height: 100%;
+    filter: drop-shadow(0 4px 8px oklch(var(--shadow) / 0.6));
+    animation:
       sprite-spawn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
       sprite-idle 3s ease-in-out infinite alternate 0.5s;
     transform-origin: bottom center;
@@ -250,18 +220,31 @@
   .overlay-heading h1 {
     min-width: 0;
     overflow: hidden;
-    font-weight: 800;
-    text-transform: capitalize;
+    font-family: var(--font-display), Georgia, serif;
+    font-weight: 700;
     text-overflow: ellipsis;
     white-space: nowrap;
-    letter-spacing: -0.01em;
+    letter-spacing: 0.01em;
   }
-  .overlay-card[data-size="compact"] .overlay-heading h1 {
-    /* Wrap long names in tight widgets */
-    white-space: normal;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+  .overlay-heading h1 small {
+    margin-left: 0.4em;
+    font-family: var(--font-sans), ui-sans-serif, sans-serif;
+    font-size: 0.55em;
+    font-weight: 500;
+    font-style: italic;
+    color: var(--overlay-muted-text);
+  }
+  .overlay-card[data-size="compact"] .overlay-heading h1 small {
+    display: none;
+  }
+  .overlay-unit-class {
+    margin-top: clamp(0.15rem, 1.5cqh, 0.35rem);
+    font: 600 clamp(0.45rem, 6cqh, 0.7rem)/1.2 ui-sans-serif, system-ui, sans-serif;
+    letter-spacing: 0.08em;
+    color: var(--overlay-primary);
+  }
+  .overlay-card[data-size="compact"] .overlay-unit-class {
+    display: none;
   }
 
   .overlay-heading span {
@@ -273,11 +256,24 @@
   }
 
   .overlay-health-track {
+    position: relative;
     height: clamp(0.3rem, 10cqh, 1rem);
     overflow: hidden;
-    border-radius: 999px;
+    border-radius: 2px;
     background: oklch(var(--muted) / 0.6);
-    border: 1px solid oklch(var(--border) / 0.3);
+    border: 1px solid oklch(var(--border) / 0.5);
+  }
+  /* Tick marks every 5 HP, like a tactics HP gauge. */
+  .overlay-health-track::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent 0 calc(10% - 1px),
+      oklch(var(--background) / 0.7) calc(10% - 1px) 10%
+    );
   }
 
   .overlay-health-fill {
@@ -352,14 +348,14 @@
     z-index: 20;
   }
   .overlay-event[data-kind="caught"] {
-    color: #ffffff;
-    background: oklch(var(--success) / 0.95);
-    border: 1px solid oklch(var(--success));
+    color: oklch(var(--primary-foreground));
+    background: oklch(var(--primary) / 0.97);
+    border: 1px solid oklch(var(--primary));
   }
   .overlay-event[data-kind="hit"] {
     color: #ffffff;
-    background: oklch(var(--destructive) / 0.95);
-    border: 1px solid oklch(var(--destructive));
+    background: oklch(var(--accent) / 0.95);
+    border: 1px solid oklch(var(--accent));
   }
 
   /* Persistent badge for the most recent catch in this channel. */
@@ -413,78 +409,26 @@
     letter-spacing: 0.05em;
   }
 
-  /* Animation helpers for Sprite & Pokéball */
+  /* Damage + recruit sequences */
   .overlay-sprite-frame.is-damaged .overlay-sprite {
     animation: sprite-damage 0.5s ease-in-out !important;
   }
-
-  .overlay-sprite-frame.is-catching.phase-suck .overlay-sprite {
-    animation: sprite-suck 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards !important;
+  .overlay-sprite-frame.is-recruiting.phase-strike .overlay-sprite {
+    animation: recruit-strike 0.5s ease-out forwards !important;
   }
-
-  .overlay-sprite-frame.is-catching.phase-wiggle .overlay-sprite,
-  .overlay-sprite-frame.is-catching.phase-success .overlay-sprite {
-    opacity: 0;
-    animation: none !important;
+  .overlay-sprite-frame.is-recruiting.phase-banner .overlay-sprite {
+    animation: recruit-banner 1.9s ease-in-out forwards !important;
   }
-
-  .overlay-pokeball-container {
+  .overlay-sprite-frame.is-recruiting::after {
+    content: "";
     position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-    z-index: 10;
-  }
-
-  .overlay-pokeball {
-    image-rendering: pixelated;
-    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
-    transform-origin: bottom center;
-  }
-
-  .phase-suck .overlay-pokeball {
-    animation: sprite-spawn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-  }
-
-  .phase-wiggle .overlay-pokeball {
-    animation: pokeball-wiggle 0.5s ease-in-out infinite;
-  }
-
-  .phase-success .overlay-pokeball {
-    animation: pokeball-success 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-  }
-
-  .phase-reveal .overlay-pokeball {
-    animation: pokeball-fade-out 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-  }
-
-  /* Success Sparkles */
-  .overlay-sparkles {
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .sparkle {
-    position: absolute;
-    width: 6px;
-    height: 6px;
+    inset: -10%;
     border-radius: 50%;
     pointer-events: none;
+    background: radial-gradient(circle, var(--overlay-primary) 0%, transparent 65%);
+    opacity: 0;
+    animation: recruit-glow 2.4s ease-out forwards;
   }
-
-  .sparkle-0 { animation: sparkle-out-0 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards; background: oklch(var(--warning)); box-shadow: 0 0 6px oklch(var(--warning)); }
-  .sparkle-1 { animation: sparkle-out-1 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards; background: oklch(var(--destructive)); box-shadow: 0 0 6px oklch(var(--destructive)); }
-  .sparkle-2 { animation: sparkle-out-2 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards; background: oklch(var(--info)); box-shadow: 0 0 6px oklch(var(--info)); }
-  .sparkle-3 { animation: sparkle-out-3 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards; background: oklch(var(--success)); box-shadow: 0 0 6px oklch(var(--success)); }
-  .sparkle-4 { animation: sparkle-out-4 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards; background: oklch(var(--accent)); box-shadow: 0 0 6px oklch(var(--accent)); }
-  .sparkle-5 { animation: sparkle-out-5 0.7s cubic-bezier(0.25, 1, 0.5, 1) forwards; background: oklch(var(--primary)); box-shadow: 0 0 6px oklch(var(--primary)); }
-
 
   /* Keyframe Animations */
   @keyframes sprite-idle {
@@ -538,69 +482,23 @@
     }
   }
 
-  @keyframes sprite-suck {
-    0% {
-      transform: scale(1) translateY(0) rotate(0deg);
-      filter: brightness(1);
-      opacity: 1;
-    }
-    35% {
-      transform: scale(0.8) translateY(-10px) rotate(-20deg);
-      filter: brightness(1.5) sepia(0.2) hue-rotate(180deg);
-      opacity: 0.9;
-    }
-    100% {
-      transform: scale(0) translateY(30px) rotate(720deg);
-      filter: brightness(3) sepia(0.5) hue-rotate(180deg);
-      opacity: 0;
-    }
-  }
 
-  @keyframes pokeball-wiggle {
-    0%, 100% { transform: rotate(0deg) scale(1); }
-    15% { transform: rotate(-20deg) translate(-2px, -1px); }
-    30% { transform: rotate(20deg) translate(2px, -1px); }
-    45% { transform: rotate(-12deg) translate(-1px, 0); }
-    60% { transform: rotate(12deg) translate(1px, 0); }
-    75% { transform: rotate(0deg) scale(1); }
+  @keyframes recruit-strike {
+    0% { transform: translateX(0); filter: brightness(1); }
+    30% { transform: translateX(-6%) rotate(-4deg); filter: brightness(2.5); }
+    100% { transform: translateX(0); filter: brightness(1.15); }
   }
-
-  @keyframes pokeball-success {
-    0% {
-      transform: scale(1);
-      filter: drop-shadow(0 0 0 oklch(var(--success)));
-    }
-    40% {
-      transform: scale(1.3);
-      filter: drop-shadow(0 0 15px oklch(var(--success))) brightness(1.3);
-    }
-    70% {
-      transform: scale(0.95);
-      filter: drop-shadow(0 0 25px oklch(var(--success))) brightness(1.1);
-    }
-    100% {
-      transform: scale(1);
-      filter: drop-shadow(0 0 5px oklch(var(--success) / 0.5));
-    }
+  @keyframes recruit-banner {
+    0% { transform: scale(1); }
+    20% { transform: scale(1.12) translateY(-4%); }
+    85% { transform: scale(1.12) translateY(-4%); opacity: 1; }
+    100% { transform: scale(0.7); opacity: 0; }
   }
-
-  @keyframes pokeball-fade-out {
-    0% {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-    100% {
-      opacity: 0;
-      transform: scale(0) translateY(-15px);
-    }
+  @keyframes recruit-glow {
+    0% { opacity: 0; transform: scale(0.6); }
+    25% { opacity: 0.55; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.3); }
   }
-
-  @keyframes sparkle-out-0 { 0% { transform: translate(0, 0) scale(0); opacity: 1; } 100% { transform: translate(-35px, -35px) scale(1.2); opacity: 0; } }
-  @keyframes sparkle-out-1 { 0% { transform: translate(0, 0) scale(0); opacity: 1; } 100% { transform: translate(35px, -35px) scale(1.2); opacity: 0; } }
-  @keyframes sparkle-out-2 { 0% { transform: translate(0, 0) scale(0); opacity: 1; } 100% { transform: translate(-45px, 5px) scale(1.2); opacity: 0; } }
-  @keyframes sparkle-out-3 { 0% { transform: translate(0, 0) scale(0); opacity: 1; } 100% { transform: translate(45px, 5px) scale(1.2); opacity: 0; } }
-  @keyframes sparkle-out-4 { 0% { transform: translate(0, 0) scale(0); opacity: 1; } 100% { transform: translate(-20px, 40px) scale(1.2); opacity: 0; } }
-  @keyframes sparkle-out-5 { 0% { transform: translate(0, 0) scale(0); opacity: 1; } 100% { transform: translate(20px, 40px) scale(1.2); opacity: 0; } }
 
   @container overlay (orientation: portrait) {
     .overlay-card {
@@ -678,7 +576,6 @@
   }
   .overlay-card[data-theme="retro"] .overlay-sprite {
     filter: contrast(1.4) grayscale(1) brightness(0.9);
-    image-rendering: pixelated;
   }
   .overlay-card[data-theme="retro"] .overlay-health-track {
     border: 2px solid #0f380f;
@@ -692,31 +589,34 @@
     border-top: 2px solid #0f380f;
   }
 
-  /* Pokédex Sci-Fi Theme Style Overrides */
-  .overlay-card[data-theme="pokedex"] {
-    --overlay-card: #dc2626;
-    --overlay-primary: #f87171;
-    --overlay-primary-border: #7f1d1d;
-    --overlay-text: #ffffff;
-    --overlay-muted-text: #fca5a6;
-    border: 3px solid #7f1d1d;
-    border-radius: clamp(0.5rem, 3cqh, 1rem);
-    box-shadow: 
-      0 0 20px rgba(220, 38, 38, 0.35),
-      inset 0 2px 4px rgba(255, 255, 255, 0.2);
-    background: linear-gradient(135deg, #ee4444 0%, #b91c1c 100%);
-  }
-  .overlay-card[data-theme="pokedex"] .overlay-health-track {
-    border: 1px solid #7f1d1d;
-    background: #450a0a;
+  /* Chronicle: parchment and ink, for lighter stream layouts */
+  .overlay-card[data-theme="chronicle"] {
+    --overlay-card: #efe3c6;
+    --overlay-primary: #8a3b1c;
+    --overlay-primary-border: #5b3a1e;
+    --overlay-text: #2b1d10;
+    --overlay-muted-text: #6b5236;
+    border: 3px double #5b3a1e;
     border-radius: 4px;
+    box-shadow:
+      inset 0 0 0 4px #efe3c6,
+      inset 0 0 0 5px #c9a978,
+      0 8px 20px rgba(0, 0, 0, 0.25);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: linear-gradient(135deg, #f4ead2 0%, #e6d5ae 100%);
   }
-  .overlay-card[data-theme="pokedex"] .overlay-health-fill {
-    background: #06b6d4;
-    box-shadow: 0 0 8px #06b6d4;
+  .overlay-card[data-theme="chronicle"] .overlay-health-track {
+    border: 1px solid #5b3a1e;
+    background: #d8c39a;
+    border-radius: 2px;
   }
-  .overlay-card[data-theme="pokedex"] .overlay-ticker {
-    border-top: 1px solid #f87171;
+  .overlay-card[data-theme="chronicle"] .overlay-health-fill {
+    background: #8a3b1c;
+    box-shadow: none;
+  }
+  .overlay-card[data-theme="chronicle"] .overlay-ticker {
+    border-top: 1px solid #c9a978;
   }
 }
 

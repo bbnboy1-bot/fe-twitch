@@ -16,13 +16,17 @@ import {
 import { OverlayView } from "@/features/overlay/OverlayView";
 import type { ActivePoke, OverlayCatch, OverlayEvent, OverlaySize } from "@/features/overlay/model";
 import { OVERLAY_PRESETS } from "@/features/overlay/presets";
+import { getUnitDisplayName } from "@/features/units/presentation";
+import { recruitRandomUnit, ROSTER } from "@/features/units/roster";
+
+const DEFAULT_SIM_UNIT = "kestrel";
 
 const THEME_PRESETS = [
-  { name: "Default Yellow", primary: "#facc15", card: "#1a1625", text: "#ffffff" },
-  { name: "Crimson Flame", primary: "#ef4444", card: "#2e0a0a", text: "#fecaca" },
-  { name: "Electric Blue", primary: "#3b82f6", card: "#0b132b", text: "#dbeafe" },
-  { name: "Emerald Forest", primary: "#22c55e", card: "#022c22", text: "#dcfce7" },
-  { name: "Cyberpunk Magenta", primary: "#ec4899", card: "#2d0b25", text: "#fce7f3" },
+  { name: "Gilt", primary: "#e0b64a", card: "#161c2c", text: "#f3efe4" },
+  { name: "Crimson banner", primary: "#d9453a", card: "#2a1010", text: "#fde8e5" },
+  { name: "Steel", primary: "#6fa3e0", card: "#0e1626", text: "#dbe7f7" },
+  { name: "Verdant", primary: "#5fbf7a", card: "#0c2118", text: "#dff5e6" },
+  { name: "Twilight", primary: "#c77ddb", card: "#1e1030", text: "#f1e4f7" },
 ];
 
 export default function OverlayControls({
@@ -44,12 +48,12 @@ export default function OverlayControls({
   const [showTicker, setShowTicker] = useState(true);
 
   // Color customization states (initialize to default colors)
-  const [primaryColor, setPrimaryColor] = useState("#facc15");
-  const [cardColor, setCardColor] = useState("#1a1625");
-  const [textColor, setTextColor] = useState("#ffffff");
+  const [primaryColor, setPrimaryColor] = useState("#e0b64a");
+  const [cardColor, setCardColor] = useState("#161c2c");
+  const [textColor, setTextColor] = useState("#f3efe4");
 
   // Simulation states for interactive preview
-  const [simPoke, setSimPoke] = useState("pikachu");
+  const [simPoke, setSimPoke] = useState(DEFAULT_SIM_UNIT);
   const [simHealth, setSimHealth] = useState(38);
   const [simEvent, setSimEvent] = useState<OverlayEvent>({
     kind: null,
@@ -72,9 +76,9 @@ export default function OverlayControls({
   if (!showTicker) queryParams.set("hideTicker", "true");
 
   const cleanHex = (hex: string) => hex.replace("#", "");
-  if (primaryColor && primaryColor !== "#facc15") queryParams.set("primary", cleanHex(primaryColor));
-  if (cardColor && cardColor !== "#1a1625") queryParams.set("card", cleanHex(cardColor));
-  if (textColor && textColor !== "#ffffff") queryParams.set("text", cleanHex(textColor));
+  if (primaryColor && primaryColor !== "#e0b64a") queryParams.set("primary", cleanHex(primaryColor));
+  if (cardColor && cardColor !== "#161c2c") queryParams.set("card", cleanHex(cardColor));
+  if (textColor && textColor !== "#f3efe4") queryParams.set("text", cleanHex(textColor));
 
   const queryString = queryParams.toString();
   const customizedUrl = queryString ? `${url}?${queryString}` : url;
@@ -99,36 +103,33 @@ export default function OverlayControls({
     setSimHealth((prev) => Math.max(0, prev - damage));
     setSimEvent({
       kind: "hit",
-      player: "ash_ketchum",
+      player: "hudson",
       damage,
       at: Date.now().toString(),
     });
   }
 
   function handleSimulateCatch() {
-    const randomPokemon = ["charizard", "gengar", "mew", "eevee", "snorlax"][
-      Math.floor(Math.random() * 5)
-    ];
+    // The unit on screen is the one being recruited; a new challenger follows.
+    const recruited = simPoke;
+    const next = recruitRandomUnit().id;
     setSimEvent({
       kind: "caught",
-      player: "goh_trainer",
+      player: "viewer_42",
       damage: null,
       at: Date.now().toString(),
     });
     setSimCatch({
-      poke: randomPokemon,
-      player: "goh_trainer",
+      poke: recruited,
+      player: "viewer_42",
       at: Date.now().toString(),
     });
-    // Update simulation poke to the newly caught pokemon
-    setTimeout(() => {
-      setSimPoke(randomPokemon);
-      setSimHealth(50);
-    }, 3000);
+    setSimPoke(next);
+    setSimHealth(50);
   }
 
   function handleResetSim() {
-    setSimPoke("pikachu");
+    setSimPoke(DEFAULT_SIM_UNIT);
     setSimHealth(38);
     setSimEvent({ kind: null, player: null, damage: null, at: null });
     setSimCatch({ poke: null, player: null, at: null });
@@ -146,12 +147,12 @@ export default function OverlayControls({
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 font-semibold mb-4 text-primary">
             <Settings className="size-4" />
-            <span>Customize Style & Layout</span>
+            <span>Style and layout</span>
           </div>
 
           {/* Color Presets */}
           <div className="mb-4">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Preset Color Themes</p>
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Colour presets</p>
             <div className="flex flex-wrap gap-2">
               {THEME_PRESETS.map((theme) => (
                 <button
@@ -180,7 +181,7 @@ export default function OverlayControls({
             {/* Color Pickers */}
             <div className="grid gap-3">
               <Field>
-                <FieldLabel htmlFor="color-primary">Primary/Border Color</FieldLabel>
+                <FieldLabel htmlFor="color-primary">Accent and border</FieldLabel>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -195,13 +196,13 @@ export default function OverlayControls({
                     value={primaryColor}
                     onChange={(e) => setPrimaryColor(e.target.value)}
                     className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs font-mono"
-                    placeholder="#facc15"
+                    placeholder="#e0b64a"
                   />
                 </div>
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="color-card">Card Background</FieldLabel>
+                <FieldLabel htmlFor="color-card">Card background</FieldLabel>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -216,13 +217,13 @@ export default function OverlayControls({
                     value={cardColor}
                     onChange={(e) => setCardColor(e.target.value)}
                     className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs font-mono"
-                    placeholder="#1a1625"
+                    placeholder="#161c2c"
                   />
                 </div>
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="color-text">Text Color</FieldLabel>
+                <FieldLabel htmlFor="color-text">Text</FieldLabel>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -237,7 +238,7 @@ export default function OverlayControls({
                     value={textColor}
                     onChange={(e) => setTextColor(e.target.value)}
                     className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs font-mono"
-                    placeholder="#ffffff"
+                    placeholder="#f3efe4"
                   />
                 </div>
               </Field>
@@ -246,7 +247,7 @@ export default function OverlayControls({
             {/* Size, Theme & Badges */}
             <div className="grid gap-3">
               <Field>
-                <FieldLabel htmlFor="overlay-size-select">Overlay Preset Size</FieldLabel>
+                <FieldLabel htmlFor="overlay-size-select">Overlay size</FieldLabel>
                 <Select
                   value={size}
                   onValueChange={(val) => setSize(val as OverlaySize)}
@@ -265,7 +266,7 @@ export default function OverlayControls({
               </Field>
 
               <Field>
-                <FieldLabel htmlFor="overlay-theme-select">Overlay Theme / Skin</FieldLabel>
+                <FieldLabel htmlFor="overlay-theme-select">Theme</FieldLabel>
                 <Select
                   value={theme}
                   onValueChange={setTheme}
@@ -274,9 +275,9 @@ export default function OverlayControls({
                     <SelectValue placeholder="Select theme" />
                   </SelectTrigger>
                   <SelectContent position="popper">
-                    <SelectItem value="default">Glass (Default)</SelectItem>
-                    <SelectItem value="retro">Retro GameBoy</SelectItem>
-                    <SelectItem value="pokedex">Pokédex Sci-Fi</SelectItem>
+                    <SelectItem value="default">Glass (default)</SelectItem>
+                    <SelectItem value="chronicle">Chronicle (parchment)</SelectItem>
+                    <SelectItem value="retro">Retro handheld</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
@@ -289,7 +290,7 @@ export default function OverlayControls({
                     onCheckedChange={(checked) => setShowLastCatch(checked === true)}
                   />
                   <div className="grid gap-0.5">
-                    <FieldLabel htmlFor="toggle-last-catch" className="text-xs">Show Last Catch badge</FieldLabel>
+                    <FieldLabel htmlFor="toggle-last-catch" className="text-xs">Show last recruit</FieldLabel>
                   </div>
                 </Field>
 
@@ -300,7 +301,7 @@ export default function OverlayControls({
                     onCheckedChange={(checked) => setShowLastAttack(checked === true)}
                   />
                   <div className="grid gap-0.5">
-                    <FieldLabel htmlFor="toggle-last-attack" className="text-xs">Show Last Attacker badge</FieldLabel>
+                    <FieldLabel htmlFor="toggle-last-attack" className="text-xs">Show last attacker</FieldLabel>
                   </div>
                 </Field>
 
@@ -311,7 +312,7 @@ export default function OverlayControls({
                     onCheckedChange={(checked) => setShowTicker(checked === true)}
                   />
                   <div className="grid gap-0.5">
-                    <FieldLabel htmlFor="toggle-ticker" className="text-xs">Show scrolling info ticker</FieldLabel>
+                    <FieldLabel htmlFor="toggle-ticker" className="text-xs">Show scrolling ticker</FieldLabel>
                   </div>
                 </Field>
               </div>
@@ -326,20 +327,20 @@ export default function OverlayControls({
         <div className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-center gap-2 font-semibold mb-4 text-primary">
             <Zap className="size-4" />
-            <span>Interactive Simulator</span>
+            <span>Simulator</span>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             <Field>
-              <FieldLabel htmlFor="sim-poke-select">Demo Pokémon Species</FieldLabel>
+              <FieldLabel htmlFor="sim-poke-select">Enemy unit</FieldLabel>
               <Select value={simPoke} onValueChange={(val) => { setSimPoke(val); setSimHealth(50); }}>
                 <SelectTrigger id="sim-poke-select" className="w-full">
-                  <SelectValue placeholder="Select pokemon" />
+                  <SelectValue placeholder="Select unit" />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  {["pikachu", "gengar", "charizard", "eevee", "mew", "snorlax", "bulbasaur", "squirtle"].map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                  {ROSTER.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {getUnitDisplayName(u.id)} {u.epithet}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -348,7 +349,7 @@ export default function OverlayControls({
 
             <Field>
               <div className="flex justify-between items-center">
-                <FieldLabel htmlFor="health-range">Simulated HP</FieldLabel>
+                <FieldLabel htmlFor="health-range">Enemy HP</FieldLabel>
                 <span className="font-mono text-xs font-bold">{simHealth} / 50</span>
               </div>
               <input
@@ -365,20 +366,20 @@ export default function OverlayControls({
 
           <div className="flex flex-wrap gap-2 mt-4">
             <Button size="sm" onClick={handleSimulateHit} variant="outline" className="flex items-center gap-1 text-destructive hover:text-destructive">
-              <Zap className="size-3" /> Simulate Hit
+              <Zap className="size-3" /> Simulate hit
             </Button>
             <Button size="sm" onClick={handleSimulateCatch} variant="outline" className="flex items-center gap-1 text-success hover:text-success">
-              <Sparkles className="size-3" /> Simulate Catch
+              <Sparkles className="size-3" /> Simulate recruit
             </Button>
             <Button size="sm" onClick={handleResetSim} variant="secondary" className="flex items-center gap-1">
-              <RotateCcw className="size-3" /> Reset Sim
+              <RotateCcw className="size-3" /> Reset
             </Button>
           </div>
         </div>
         <div className="rounded-lg border border-border bg-card p-4 flex-1 flex flex-col">
           <div className="flex items-center gap-2 font-semibold mb-4 text-primary">
             <Heart className="size-4" />
-            <span>Live Interactive Preview</span>
+            <span>Preview</span>
           </div>
 
           {/* Container query wrapper to emulate overlay viewport */}

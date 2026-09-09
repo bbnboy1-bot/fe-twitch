@@ -42,9 +42,9 @@ export async function giftPokemonAction(
 
     revalidatePath("/gift");
     revalidatePath("/collections");
-    return successState("Pokémon sent successfully.");
+    return successState("Unit sent.");
   } catch {
-    return errorState("Choose a Pokémon and recipient.");
+    return errorState("Choose a unit and a recipient.");
   }
 }
 
@@ -71,7 +71,7 @@ export async function createTradeAction(
     revalidatePath("/trade");
     return successState("Trade offer created.");
   } catch {
-    return errorState("Choose both Pokémon before creating the offer.");
+    return errorState("Choose both units before creating the offer.");
   }
 }
 

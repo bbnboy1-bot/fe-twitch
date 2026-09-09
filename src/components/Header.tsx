@@ -3,10 +3,13 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { getCurrentAccount } from "@/features/auth/queries";
+import { GAME_NAME } from "@/config/brand";
+import { Crest } from "./Crest";
 import UserDropdown from "./UserDropdown";
 
 const menuItems = [
-  { name: "Collections", path: "/collections" },
+  { name: "Army", path: "/collections" },
+  { name: "Units", path: "/units" },
   { name: "Gift", path: "/gift" },
   { name: "Trade", path: "/trade" },
 ];
@@ -15,7 +18,7 @@ export default async function Header() {
   const account = await getCurrentAccount();
 
   return (
-    <header className="sticky top-0 z-40 border-b-2 border-border bg-background/85 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 border-b border-border bg-background/85 backdrop-blur-xl">
       <div className="container flex min-h-16 items-center justify-between gap-4 py-3">
         <Brand />
         <nav className="hidden items-center gap-1 rounded-lg border border-border bg-card/70 p-1 tablet:flex">
@@ -23,7 +26,7 @@ export default async function Header() {
             <Link
               key={item.path}
               href={item.path}
-              className="rounded-md px-3 py-2 font-mono text-xs font-bold uppercase tracking-wider text-muted-foreground transition hover:bg-primary hover:text-primary-foreground"
+              className="rounded-md px-3 py-2 text-sm font-semibold text-muted-foreground transition hover:bg-primary hover:text-primary-foreground"
             >
               {item.name}
             </Link>
@@ -39,7 +42,7 @@ export default async function Header() {
             <X className="hidden size-5 group-open:block" />
             <span className="sr-only">Toggle navigation</span>
           </summary>
-          <div className="pixel-shadow absolute right-0 top-12 w-72 border-2 border-border bg-background p-3">
+          <div className="game-panel absolute right-0 top-12 w-72 p-3">
             <div className="mb-3 border-b border-border pb-3">
               <HeaderAccount channel={account?.channel ?? null} mobile />
             </div>
@@ -64,13 +67,8 @@ export default async function Header() {
 function Brand() {
   return (
     <Link href="/" className="inline-flex items-center gap-2">
-      <span
-        className="pokeball-mark inline-flex size-9 items-center justify-center"
-        aria-hidden="true"
-      >
-        <span className="pokeball-mark__button" />
-      </span>
-      <span className="text-xl font-black tracking-tight">POKITCH</span>
+      <Crest size={34} />
+      <span className="font-heading text-xl font-bold tracking-wide">{GAME_NAME}</span>
     </Link>
   );
 }

@@ -26,8 +26,8 @@ export default async function SetupPage() {
     <section className="container grid max-w-5xl gap-7 py-10 tablet:py-14">
       <div>
         <p className="game-kicker">Streamer setup</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight tablet:text-5xl">
-          Prepare your overlay for stream
+        <h1 className="mt-2 font-heading text-3xl font-bold tablet:text-5xl">
+          Set up your overlay
         </h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">
           Copy your browser-source URL, add it to OBS (recommended size: <strong>300 × 130</strong>), and work through the

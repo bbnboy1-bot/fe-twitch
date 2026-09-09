@@ -32,9 +32,9 @@ export function CollectionsView({
 
       {!rows.length ? (
         <div className="rounded-xl border border-dashed border-border bg-muted/20 px-6 py-16 text-center">
-          <h2 className="font-semibold">No catches found</h2>
+          <h2 className="font-semibold">No recruits found</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Try another trainer, channel, or Pokémon name.
+            Try another commander, channel, or unit id (for example: bram).
           </p>
         </div>
       ) : (

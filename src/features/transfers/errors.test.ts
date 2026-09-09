@@ -3,9 +3,12 @@ import { describe, expect, it } from "vitest";
 import { getPublicTransferError } from "./errors";
 
 describe("getPublicTransferError", () => {
-  it("preserves supported business errors", () => {
+  it("preserves supported business errors with unit wording", () => {
     expect(getPublicTransferError("Pokemon is reserved in an open trade")).toBe(
-      "Pokemon is reserved in an open trade",
+      "unit is reserved in an open trade",
+    );
+    expect(getPublicTransferError("A Pokemon cannot be traded for itself")).toBe(
+      "A unit cannot be traded for itself",
     );
   });
 

@@ -8,7 +8,7 @@ export default function GuestHeroHomePage() {
     <div className="flex">
       <form action={signInWithTwitch}>
         <Button
-          className="pixel-shadow h-12 border-2 px-6 font-bold"
+          className="h-12 px-6 font-bold"
           variant="primary"
           size="lg"
           type="submit"

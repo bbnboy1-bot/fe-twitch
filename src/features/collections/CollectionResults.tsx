@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -11,9 +10,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  formatCatchDate,
-  getPokemonSpriteUrl,
-} from "@/features/pokemon/presentation";
+  CLASS_META,
+  formatRecruitDate,
+  getUnitDisplayName,
+  UnitPortraitById,
+} from "@/features/units/presentation";
+import { getUnitById } from "@/features/units/roster";
 
 import type { CollectionRow } from "./types";
 
@@ -41,32 +43,29 @@ function CollectionGrid({ rows }: { rows: CollectionRow[] }) {
       {rows.map((row) => (
         <Card
           key={row.id}
-          className="game-panel group/card overflow-hidden border-2 bg-card shadow-none transition-transform hover:-translate-y-1"
+          className="game-panel overflow-hidden shadow-none"
         >
-          <CardContent className="flex items-center gap-4 p-3 h-28">
+          <CardContent className="flex h-28 items-center gap-4 p-3">
             <Link
-              href={`/pokemon/${encodeURIComponent(row.poke)}`}
-              aria-label={`View ${row.poke} details`}
-              className="media-surface group relative flex size-20 shrink-0 items-center justify-center border-2 border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md overflow-hidden"
+              href={`/units/${encodeURIComponent(row.poke)}`}
+              aria-label={`View ${getUnitDisplayName(row.poke)} details`}
+              className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <Image
-                unoptimized
-                src={getPokemonSpriteUrl(row.poke)}
-                alt={`${row.poke} sprite`}
-                width={64}
-                height={64}
-                className="max-h-16 w-auto object-contain [image-rendering:pixelated] transition-transform duration-300 group-hover:scale-110 group-hover/card:scale-110"
-                style={{ width: "auto", height: "auto" }}
-              />
+              <UnitPortraitById id={row.poke} size={76} />
             </Link>
 
             <div className="flex flex-1 flex-col justify-between min-w-0 h-full py-0.5">
               <div className="min-w-0">
                 <Link
-                  href={`/pokemon/${encodeURIComponent(row.poke)}`}
-                  className="font-black capitalize tracking-wide transition text-foreground hover:text-primary block truncate text-base"
+                  href={`/units/${encodeURIComponent(row.poke)}`}
+                  className="block truncate font-heading text-base font-bold text-foreground transition hover:text-primary"
                 >
-                  {row.poke}
+                  {getUnitDisplayName(row.poke)}
+                  {getUnitById(row.poke) ? (
+                    <span className="ml-1.5 font-sans text-xs font-normal text-muted-foreground">
+                      {CLASS_META[getUnitById(row.poke)!.unitClass].label}
+                    </span>
+                  ) : null}
                 </Link>
                 <div className="truncate text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
                   <User className="size-3 text-muted-foreground/70 shrink-0" />
@@ -94,7 +93,7 @@ function CollectionGrid({ rows }: { rows: CollectionRow[] }) {
                 </div>
                 <div className="truncate font-mono text-[9px] uppercase tracking-wider text-muted-foreground/60 flex items-center gap-1">
                   <Calendar className="size-2.5 text-muted-foreground/70 shrink-0" />
-                  <span>{formatCatchDate(row.created_at)}</span>
+                  <span>{formatRecruitDate(row.created_at)}</span>
                 </div>
               </div>
             </div>
@@ -118,11 +117,11 @@ function CollectionTable({
         <TableHeader>
           <TableRow>
             <TableHead className="w-16">#</TableHead>
-            <TableHead>Pokémon</TableHead>
-            <TableHead>Trainer</TableHead>
+            <TableHead>Unit</TableHead>
+            <TableHead>Commander</TableHead>
             <TableHead className="hidden tablet:table-cell">Channel</TableHead>
             <TableHead className="hidden text-right tablet:table-cell">
-              Caught
+              Recruited
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -134,18 +133,11 @@ function CollectionTable({
               </TableCell>
               <TableCell>
                 <Link
-                  className="inline-flex items-center gap-2 font-semibold capitalize hover:text-primary"
-                  href={`/pokemon/${encodeURIComponent(row.poke)}`}
+                  className="inline-flex items-center gap-2 font-semibold hover:text-primary"
+                  href={`/units/${encodeURIComponent(row.poke)}`}
                 >
-                  <Image
-                    unoptimized
-                    src={getPokemonSpriteUrl(row.poke)}
-                    alt=""
-                    width={36}
-                    height={36}
-                    className="size-9 object-contain [image-rendering:pixelated]"
-                  />
-                  {row.poke}
+                  <UnitPortraitById id={row.poke} size={36} />
+                  {getUnitDisplayName(row.poke)}
                 </Link>
               </TableCell>
               <TableCell>
@@ -167,7 +159,7 @@ function CollectionTable({
                 </a>
               </TableCell>
               <TableCell className="hidden text-right text-xs text-muted-foreground tablet:table-cell">
-                {formatCatchDate(row.created_at)}
+                {formatRecruitDate(row.created_at)}
               </TableCell>
             </TableRow>
           ))}

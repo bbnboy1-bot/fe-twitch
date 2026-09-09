@@ -7,7 +7,7 @@ export default function ErrorPage({ reset }: { reset: () => void }) {
     <div className="container flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
       <h1 className="text-3xl font-bold">Something went wrong</h1>
       <p className="max-w-lg text-muted-foreground">
-        Pokitch could not load this screen. Retry the request or return later.
+        This screen could not load. Try again, or come back later.
       </p>
       <Button onClick={reset}>Try again</Button>
     </div>

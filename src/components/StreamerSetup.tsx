@@ -3,6 +3,7 @@
 import { type ComponentProps, useEffect, useState } from "react";
 
 import OverlayControls from "@/components/OverlayControls";
+import { BOT_USERNAME } from "@/config/brand";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Progress } from "@/components/ui/progress";
@@ -69,7 +70,7 @@ export function StreamerSetup({
           <ChecklistItem
             checked={progress.overlayCopied}
             disabled
-            label="Responsive overlay URL copied"
+            label="Overlay URL copied"
           />
           <ChecklistItem
             checked={progress.browserSourceAdded}
@@ -80,7 +81,7 @@ export function StreamerSetup({
           />
           <ChecklistItem
             checked={progress.botModerated}
-            label="Ran /mod pokitch_bot in Twitch chat"
+            label={`Ran /mod ${BOT_USERNAME} in Twitch chat`}
             onCheckedChange={(checked) =>
               update({ botModerated: checked === true })
             }

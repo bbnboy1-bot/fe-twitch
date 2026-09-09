@@ -1,3 +1,8 @@
+/**
+ * Messages raised by the Supabase RPCs still use the original "Pokemon"
+ * wording (kept to avoid a migration). Map them to unit wording here so
+ * nothing Pokémon-flavoured reaches the screen.
+ */
 const PUBLIC_TRANSFER_ERRORS = new Set([
   "A Pokemon cannot be traded for itself",
   "Authentication required",
@@ -19,5 +24,6 @@ const GENERIC_TRANSFER_ERROR =
   "The transfer could not be completed. Please try again.";
 
 export function getPublicTransferError(message: string) {
-  return PUBLIC_TRANSFER_ERRORS.has(message) ? message : GENERIC_TRANSFER_ERROR;
+  if (!PUBLIC_TRANSFER_ERRORS.has(message)) return GENERIC_TRANSFER_ERROR;
+  return message.replace(/A Pokemon/g, "A unit").replace(/Pokemon/g, "unit");
 }

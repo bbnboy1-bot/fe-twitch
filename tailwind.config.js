@@ -73,7 +73,8 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ["var(--font-custom)"],
+        sans: ["var(--font-custom)", "ui-sans-serif", "system-ui"],
+        heading: ["var(--font-display)", "Georgia", "serif"],
       },
       borderRadius: {
         lg: "var(--radius)",

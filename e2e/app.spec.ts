@@ -21,7 +21,7 @@ test("home and collections provide the primary public journey", async ({
 
   await page.goto("/collections");
   await expect(
-    page.getByRole("heading", { name: "Latest catches" }),
+    page.getByRole("heading", { name: "Latest recruits" }),
   ).toBeVisible();
   await expect(page.locator("body")).not.toHaveCSS("overflow-x", "scroll");
 
@@ -41,13 +41,13 @@ test("protected transfer pages explain sign-in without redirecting", async ({
   await page.goto("/gift");
   await expect(page).toHaveURL("/gift");
   await expect(
-    page.getByText("Unlock the gift terminal"),
+    page.getByText("Sign in to gift units"),
   ).toBeVisible();
 
   await page.goto("/trade");
   await expect(page).toHaveURL("/trade");
   await expect(
-    page.getByText("Sign in to trade Pokémon"),
+    page.getByText("Sign in to trade units"),
   ).toBeVisible();
 });
 
@@ -56,10 +56,9 @@ test("collections exposes totals and canonical numbered pagination", async ({
 }) => {
   await page.goto("/collections?page=1&perPage=24");
   await expect(
-    page.getByRole("heading", { name: "Latest catches" }),
+    page.getByRole("heading", { name: "Latest recruits" }),
   ).toBeVisible();
-  await expect(page.getByText(/total catches/)).toBeVisible();
-  await expect(page.getByText("Next catches", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Next recruits", { exact: true })).toHaveCount(0);
 });
 
 test("OBS overlay fills the browser source and keeps compact compatibility", async ({

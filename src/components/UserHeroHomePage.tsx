@@ -12,7 +12,7 @@ export default function UserHeroHomePage({
   data: { id: string; channel: string };
 }) {
   return (
-    <Card className="game-panel border-2 border-border bg-card text-left shadow-none">
+    <Card className="game-panel text-left shadow-none">
       <CardContent className="flex flex-col gap-4">
         <div className="flex flex-col gap-2 text-left">
           <h2 className="text-2xl font-bold">Welcome, {data.channel}!</h2>

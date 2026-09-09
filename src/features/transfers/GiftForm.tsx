@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { giftPokemonAction } from "@/features/transfers/actions";
+import { getUnitFullTitle } from "@/features/units/presentation";
 import {
   initialTransferState,
   type CollectionOption,
@@ -37,16 +38,16 @@ export function GiftForm({
     <form action={action} className="flex flex-col gap-5">
       <FieldGroup className="grid gap-4 tablet:grid-cols-2">
         <Field>
-          <FieldLabel>Your Pokémon</FieldLabel>
+          <FieldLabel>Your unit</FieldLabel>
           <Select name="collectionId" required>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Choose a Pokémon" />
+              <SelectValue placeholder="Choose a unit" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
                 {owned.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {item.poke}
+                    {getUnitFullTitle(item.poke)}
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -57,7 +58,7 @@ export function GiftForm({
           <FieldLabel>Recipient</FieldLabel>
           <Select name="recipientTwitchId" required>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Choose a collector" />
+              <SelectValue placeholder="Choose a commander" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -80,7 +81,7 @@ export function GiftForm({
         size="lg"
         disabled={pending || !owned.length || !collectors.length}
       >
-        {pending ? "Sending…" : "Send Pokémon"}
+        {pending ? "Sending…" : "Send unit"}
       </Button>
     </form>
   );

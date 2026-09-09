@@ -13,8 +13,8 @@ export default async function GiftPage() {
       <section className="container flex justify-center py-10 tablet:py-14">
         <SignInPrompt
           destination="/gift"
-          title="Unlock the gift terminal"
-          description="Sign in with Twitch to pick a Pokémon from your collection and send it to another collector."
+          title="Sign in to gift units"
+          description="Sign in with Twitch to pick a unit from your army and send it to another commander."
         />
       </section>
     );
@@ -25,13 +25,13 @@ export default async function GiftPage() {
   return (
     <section className="container grid max-w-5xl gap-7 py-10 tablet:py-14">
       <div>
-        <p className="game-kicker">Gift terminal</p>
-        <h1 className="mt-2 text-3xl font-black tracking-tight tablet:text-5xl">
-          Send a Pokémon to another collector
+        <p className="game-kicker">Gifts</p>
+        <h1 className="mt-2 font-heading text-3xl font-bold tablet:text-5xl">
+          Send a unit to another commander
         </h1>
         <p className="mt-2 max-w-2xl text-muted-foreground">
-          Select one Pokémon and a recipient. Transfers are validated and
-          completed as a single database operation.
+          Pick a unit and a recipient. The transfer completes in one step and
+          cannot be undone.
         </p>
       </div>
       <div className="game-panel p-5 tablet:p-7">

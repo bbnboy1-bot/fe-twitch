@@ -45,7 +45,7 @@ export default function UserDropdown({
             className="rounded-md px-3 py-2 text-xs font-semibold hover:bg-muted transition text-left flex items-center gap-1.5 text-foreground"
           >
             <UserRound className="size-3.5 text-primary" />
-            My Pokémon
+            My army
           </Link>
           <Link
             href="/setup"

@@ -2,7 +2,6 @@ import { LayoutGrid, List } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -22,6 +21,12 @@ import {
   normalizeCollectionQuery,
 } from "@/utils/collections";
 
+const MODE_LABEL: Record<CollectionFilterMode, string> = {
+  user: "Commander",
+  channel: "Channel",
+  poke: "Unit",
+};
+
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export default async function CollectionsPage({
@@ -40,16 +45,16 @@ export default async function CollectionsPage({
   return (
     <section className="container grid gap-6 py-10 tablet:py-14">
       <div className="flex flex-col gap-3">
-        <p className="game-kicker">Community archive</p>
+        <p className="game-kicker">Muster roll</p>
         <div className="flex flex-col gap-3 tablet:flex-row tablet:items-end tablet:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-black tracking-tight tablet:text-5xl">
-                {filter.q ? `Results for “${filter.q}”` : "Latest catches"}
+              <h1 className="font-heading text-3xl font-bold tablet:text-5xl">
+                {filter.q ? `Results for “${filter.q}”` : "Latest recruits"}
               </h1>
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
-              Explore recent Pokémon catches by trainer, channel, or Pokémon.
+              Every unit recruited in chat, searchable by commander, channel, or unit.
             </p>
           </div>
           <CollectionFilters filter={filter} />
@@ -81,7 +86,7 @@ function CollectionFilters({
                 {(["user", "channel", "poke"] as CollectionFilterMode[]).map(
                   (mode) => (
                     <SelectItem key={mode} value={mode}>
-                      {mode[0].toUpperCase() + mode.slice(1)}
+                      {MODE_LABEL[mode]}
                     </SelectItem>
                   ),
                 )}
@@ -96,7 +101,7 @@ function CollectionFilters({
             type="search"
             name="q"
             defaultValue={filter.q}
-            placeholder="e.g. pikachu"
+            placeholder="e.g. hudson, or bram"
           />
         </Field>
         <Field>
