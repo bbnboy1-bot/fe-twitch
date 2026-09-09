@@ -11,8 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "worker:dev": "tsx watch src/worker/index.ts",
-    "worker:start": "tsx src/worker/index.ts"
+    "worker:dev": "tsx watch --env-file=.env.local src/worker/index.ts",
+    "worker:start": "tsx --env-file=.env.local src/worker/index.ts"
   },
   "dependencies": {
     "@emnapi/core": "1.11.2",
