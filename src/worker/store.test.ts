@@ -61,12 +61,12 @@ describe("SupabaseGameStore", () => {
     } as unknown as SupabaseClient;
     const store = new SupabaseGameStore(client);
 
-    await store.ensureEncounter({ channel: "streamer", poke: "pikachu" });
+    await store.spawnEncounter({ channel: "streamer", poke: "bram", maxHealth: 48, kind: "foe", durationSeconds: null });
 
     expect(calls).toEqual([
       {
-        name: "ensure_active_poke",
-        params: { p_channel: "streamer", p_poke: "pikachu" },
+        name: "fe_spawn_encounter",
+        params: { p_channel: "streamer", p_poke: "bram", p_max_health: 48, p_kind: "foe", p_duration_seconds: null },
       },
     ]);
   });
@@ -81,11 +81,9 @@ describe("SupabaseGameStore", () => {
             outcome: "hit",
             damage: 8,
             health: 42,
-            poke: "pikachu",
-            lastEventKind: "hit",
-            lastEventPlayer: "viewer",
-            lastEventDamage: 8,
-            lastEventAt: "2026-07-03T12:00:00.000Z",
+            maxHealth: 50,
+            poke: "bram",
+            kind: "foe",
           },
           error: null,
         };
@@ -96,18 +94,16 @@ describe("SupabaseGameStore", () => {
     const result = await store.attack({
       channel: "streamer",
       damage: 8,
-      nextPoke: "eevee",
       twitchId: "1234",
       username: "viewer",
     });
 
     expect(calls).toEqual([
       {
-        name: "process_poke_attack",
+        name: "fe_attack_encounter",
         params: {
           p_channel: "streamer",
           p_damage: 8,
-          p_next_poke: "eevee",
           p_twitch_id: "1234",
           p_username: "viewer",
         },
@@ -117,11 +113,9 @@ describe("SupabaseGameStore", () => {
       outcome: "hit",
       damage: 8,
       health: 42,
-      poke: "pikachu",
-      lastEventKind: "hit",
-      lastEventPlayer: "viewer",
-      lastEventDamage: 8,
-      lastEventAt: "2026-07-03T12:00:00.000Z",
+      maxHealth: 50,
+      poke: "bram",
+      kind: "foe",
     });
   });
 

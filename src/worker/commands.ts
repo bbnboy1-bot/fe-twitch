@@ -10,13 +10,17 @@ export type PokeCommand =
   | "decline"
   | "gold"
   | "shop"
-  | "buy";
+  | "buy"
+  | "heal"
+  | "boss";
 
 const COMMANDS: Record<string, PokeCommand> = {
   attack: "attack",
   a: "attack",
   fight: "attack",
   f: "attack",
+  recruit: "welcome-pack",
+  r: "welcome-pack",
   muster: "welcome-pack",
   m: "welcome-pack",
   army: "inventory",
@@ -38,6 +42,8 @@ const COMMANDS: Record<string, PokeCommand> = {
   g: "gold",
   shop: "shop",
   buy: "buy",
+  heal: "heal",
+  boss: "boss",
 };
 
 /** Third token of the message, e.g. "!fe duel @rival" -> "rival". */
@@ -80,6 +86,8 @@ export function parsePokeCommand(message: string): PokeCommand | null {
 export function parseGamePlayer(tags: {
   username?: string;
   "user-id"?: string;
+  mod?: boolean;
+  badges?: { broadcaster?: string } | null;
 }) {
   const username = tags.username?.trim().toLowerCase();
   const twitchId = tags["user-id"]?.trim();
@@ -88,7 +96,8 @@ export function parseGamePlayer(tags: {
     return null;
   }
 
-  return { twitchId, username };
+  const isMod = Boolean(tags.mod) || tags.badges?.broadcaster === "1";
+  return { twitchId, username, isMod };
 }
 
 export class CooldownStore {
@@ -144,6 +153,7 @@ const INFORMATION_COMMANDS = new Set<PokeCommand>([
   "inventory",
   "status",
   "last",
+  "heal",
 ]);
 
 export class CommandGate {

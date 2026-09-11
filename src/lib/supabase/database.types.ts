@@ -25,9 +25,13 @@ export type Database = {
         user_id: string;
       }>;
       active_pokes: Table<{
+        battle_log: unknown;
         channel: string;
         created_at: string;
+        expires_at: string | null;
         health: number;
+        kind: string;
+        max_health: number;
         id: string;
         last_catch_at: string | null;
         last_catch_player: string | null;

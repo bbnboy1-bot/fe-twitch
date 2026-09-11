@@ -45,7 +45,7 @@ export default async function CollectionsPage({
   return (
     <section className="container grid gap-6 py-10 tablet:py-14">
       <div className="flex flex-col gap-3">
-        <p className="game-kicker">Muster roll</p>
+        <p className="game-kicker">Recruit roll</p>
         <div className="flex flex-col gap-3 tablet:flex-row tablet:items-end tablet:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-3">

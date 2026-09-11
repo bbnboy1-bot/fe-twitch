@@ -5,7 +5,7 @@ const features = [
     icon: Swords,
     title: "Fight from chat",
     description:
-      "An enemy unit is always on the overlay. Each !fe fight rolls a real strike: hit chance from skill, crits at triple damage, doubles if you are fast enough.",
+      "Foes announce themselves in chat and take the field. Each !fe fight lands a strike boosted by your best unit and the weapon triangle - and the foe hits back, so watch your champion's HP.",
   },
   {
     icon: Crown,
@@ -29,7 +29,7 @@ const features = [
     icon: Skull,
     title: "Bosses for the whole chat",
     description:
-      "Big encounters everyone chips away at together, with gold for every contributor. Coming next.",
+      "Every half hour or so a named warlord arrives with hundreds of HP and five minutes on the clock. Gold is split by damage dealt, and whoever lands the final blow recruits the boss.",
   },
   {
     icon: ShieldCheck,

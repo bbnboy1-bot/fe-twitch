@@ -14,6 +14,8 @@ type ChatMessageInput = {
   tags: {
     username?: string;
     "user-id"?: string;
+    mod?: boolean;
+    badges?: { broadcaster?: string } | null;
   };
   message: string;
   self: boolean;

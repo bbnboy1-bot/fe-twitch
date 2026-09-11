@@ -1,9 +1,11 @@
 import { Zap } from "lucide-react";
 
 const commands = [
-  { cmd: "!fe muster", alias: "!fe m", note: "Join the game and get your first unit. Free, once per channel." },
-  { cmd: "!fe fight", alias: "!fe f", note: "Attack the enemy unit on the overlay. Finish it to recruit it." },
-  { cmd: "!fe status", alias: "!fe s", note: "See the enemy's remaining HP." },
+  { cmd: "!fe recruit", alias: "!fe r", note: "Join the game and get your first unit. Free, once per channel." },
+  { cmd: "!fe fight", alias: "!fe f", note: "Strike the foe on the field. It strikes back - land the final blow to recruit it." },
+  { cmd: "!fe heal", alias: "", note: "Spend a heal-staff use to restore your routed or wounded champion." },
+  { cmd: "!fe status", alias: "!fe s", note: "See the enemy's HP, the boss timer, and your champion's HP." },
+  { cmd: "!fe boss", alias: "mods only", note: "Summon a boss right now instead of waiting for the timer." },
   { cmd: "!fe army", alias: "", note: "Get a link to your army on this site." },
   { cmd: "!fe gold", alias: "!fe g", note: "Check your gold." },
   { cmd: "!fe shop", alias: "", note: "List what the market sells and for how much." },

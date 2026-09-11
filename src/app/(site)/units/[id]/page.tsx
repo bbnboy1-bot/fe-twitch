@@ -13,12 +13,12 @@ import {
   UnitPortrait,
   WEAPON_LABEL,
 } from "@/features/units/presentation";
-import { getUnitById, ROSTER } from "@/features/units/roster";
+import { BOSSES, getUnitById, ROSTER } from "@/features/units/roster";
 
 type PageProps = { params: Promise<{ id: string }> };
 
 export function generateStaticParams() {
-  return ROSTER.map((u) => ({ id: u.id }));
+  return [...ROSTER, ...BOSSES].map((u) => ({ id: u.id }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

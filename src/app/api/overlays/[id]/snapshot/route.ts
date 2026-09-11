@@ -22,6 +22,10 @@ export async function GET(
         ? {
             poke: poke.poke,
             health: poke.health,
+            maxHealth: poke.maxHealth ?? 50,
+            kind: poke.kind ?? "foe",
+            expiresAt: poke.expiresAt ?? null,
+            battleLog: poke.battleLog ?? [],
             updatedAt: poke.updatedAt ?? null,
             lastEventKind: poke.lastEventKind ?? null,
             lastEventPlayer: poke.lastEventPlayer ?? null,

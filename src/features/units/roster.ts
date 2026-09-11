@@ -54,8 +54,37 @@ export function recruitRandomUnit(rng: () => number = Math.random): Unit {
   return ROSTER[0];
 }
 
+/**
+ * Boss roster — named warlords of Veyra. Not part of the random recruit pool;
+ * they only appear as timed/mod-triggered boss events. Defeating one recruits it.
+ * `maxHp` is the boss's battle HP on the field (unit `base.hp` stays the HP it
+ * has once recruited, so bosses aren't absurd in duels).
+ */
+export type Boss = Unit & { maxHp: number; goldPool: number; arrival: string };
+
+export const BOSSES: Boss[] = [
+  b(u("warlord-ashgar", "Ashgar", "the Ironhand", "sentinel", "legendary", 34, 14, 5, 15, 8, 4), 220, 200, "marches in under a black banner"),
+  b(u("warlord-selka", "Selka", "Nightgale", "skyrider", "legendary", 27, 13, 14, 7, 12, 8), 240, 220, "dives out of the storm clouds"),
+  b(u("warlord-durn", "Durn", "the Mountain", "berserker", "legendary", 40, 18, 6, 9, 7, 3), 320, 260, "shakes the ground with every step"),
+  b(u("warlord-ysolde", "Ysolde", "Hexweaver", "arcanist", "legendary", 26, 17, 10, 6, 14, 7), 260, 240, "steps out of a rift of violet fire"),
+  b(u("warlord-corvin", "Corvin", "Twelve-Arrows", "ranger", "legendary", 28, 15, 12, 7, 15, 9), 280, 240, "signals the attack from the treeline"),
+  b(u("warlord-vaelen", "Vaelen", "the Usurper", "duelist", "legendary", 30, 16, 15, 9, 16, 10), 400, 320, "rides down the road with the crown of Veyra"),
+];
+
+export function isBossId(id: string): boolean {
+  return BOSSES.some((x) => x.id === id);
+}
+
+export function pickRandomBoss(rng: () => number = Math.random): Boss {
+  return BOSSES[Math.floor(rng() * BOSSES.length)] ?? BOSSES[0];
+}
+
 export function getUnitById(id: string): Unit | undefined {
-  return ROSTER.find((x) => x.id === id);
+  return ROSTER.find((x) => x.id === id) ?? BOSSES.find((x) => x.id === id);
+}
+
+function b(unit: Unit, maxHp: number, goldPool: number, arrival: string): Boss {
+  return { ...unit, maxHp, goldPool, arrival };
 }
 
 // compact constructor

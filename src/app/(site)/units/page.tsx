@@ -9,7 +9,7 @@ import {
   UnitPortrait,
   WEAPON_LABEL,
 } from "@/features/units/presentation";
-import { ROSTER } from "@/features/units/roster";
+import { BOSSES, ROSTER } from "@/features/units/roster";
 
 export const metadata: Metadata = {
   title: `Units | ${GAME_NAME}`,
@@ -69,6 +69,38 @@ export default function UnitsPage() {
           </div>
         );
       })}
+
+      <div>
+        <div className="mb-3 flex items-baseline gap-3">
+          <h2 className="font-heading text-xl font-bold text-destructive">Warlords</h2>
+          <span className="text-xs text-muted-foreground">
+            boss events - hundreds of HP, five minutes, gold split by damage
+          </span>
+        </div>
+        <p className="mb-3 max-w-2xl text-sm text-muted-foreground">
+          A warlord takes the field every 30–45 minutes (or when a mod types !fe boss). Whoever lands the
+          final blow recruits them; once in your army they fight with the stats shown on their page.
+        </p>
+        <ul className="grid grid-cols-2 gap-3 tablet:grid-cols-3 laptop:grid-cols-4">
+          {BOSSES.map((unit) => (
+            <li key={unit.id}>
+              <Link
+                href={`/units/${unit.id}`}
+                className="game-panel flex items-center gap-3 p-3 transition hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <UnitPortrait unit={unit} size={56} />
+                <span className="min-w-0">
+                  <span className="block truncate font-heading font-bold">{unit.name}</span>
+                  <span className="block truncate text-xs italic text-muted-foreground">{unit.epithet}</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">
+                    {CLASS_META[unit.unitClass].label} · {unit.maxHp} field HP
+                  </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
     </section>
   );
 }

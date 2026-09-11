@@ -10,7 +10,7 @@ const steps = [
     "Mod the bot",
     `Run /mod ${BOT_USERNAME} in your chat so it can reply without rate limits.`,
   ],
-  ["Go live", "Tell chat to type !fe muster. The first unit is free."],
+  ["Go live", "Tell chat to type !fe recruit. The first unit is free."],
 ];
 
 export default function HowToUseHomePage() {

@@ -16,7 +16,7 @@ const cinzel = Cinzel({
 });
 
 export const metadata: Metadata = {
-  title: `${GAME_NAME} — ${GAME_TAGLINE}`,
+  title: `${GAME_NAME} - ${GAME_TAGLINE}`,
   description:
     "A Fire Emblem-style Twitch chat game: viewers battle enemy units, recruit them into an army, duel each other for gold, and gear up at the market. Live OBS overlay included.",
   keywords: ["Twitch", "chat game", "tactics", "OBS overlay", "Fire Emblem style"],

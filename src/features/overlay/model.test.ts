@@ -26,10 +26,12 @@ describe("overlay presentation", () => {
     expect(parseOverlaySize(undefined)).toBe("auto");
   });
 
-  it("maps health to readable status tones", () => {
+  it("maps health to readable status tones, relative to max HP", () => {
     expect(getHealthTone(50)).toBe("high");
     expect(getHealthTone(25)).toBe("medium");
     expect(getHealthTone(10)).toBe("low");
+    expect(getHealthTone(150, 220)).toBe("high");
+    expect(getHealthPercent(110, 220)).toBe(50);
   });
 });
 
@@ -53,7 +55,7 @@ describe("applyOverlaySnapshot", () => {
         updatedAt: "2026-07-01T12:00:01.000Z",
       }),
     ).toEqual({
-      poke: { health: 20, poke: "eevee" },
+      poke: { health: 20, poke: "eevee", maxHealth: 50, kind: "foe", expiresAt: null, battleLog: [] },
       updatedAt: "2026-07-01T12:00:01.000Z",
       event: { kind: null, player: null, damage: null, at: null },
       catch: { poke: null, player: null, at: null },
@@ -160,7 +162,7 @@ describe("applyActivePokeChange", () => {
         eventType: "INSERT",
         new: { channel: "pokitch", health: 50, poke: "pikachu" },
       }),
-    ).toEqual({ health: 50, poke: "pikachu" });
+    ).toEqual({ health: 50, poke: "pikachu", maxHealth: 50, kind: "foe", expiresAt: null, battleLog: [] });
 
     expect(
       applyActivePokeChange(
@@ -170,7 +172,7 @@ describe("applyActivePokeChange", () => {
           new: { channel: "pokitch", health: 37, poke: "pikachu" },
         },
       ),
-    ).toEqual({ health: 37, poke: "pikachu" });
+    ).toEqual({ health: 37, poke: "pikachu", maxHealth: 50, kind: "foe", expiresAt: null, battleLog: [] });
   });
 
   it("clears the encounter on delete and ignores malformed payloads", () => {

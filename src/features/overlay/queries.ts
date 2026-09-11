@@ -1,9 +1,9 @@
 import { createPublicClient } from "@/lib/supabase/public";
 
-import type { ActivePoke } from "./model";
+import { type ActivePoke, parseBattleLog } from "./model";
 
 const OVERLAY_EVENT_COLUMNS =
-  "health,poke,updated_at,last_event_kind,last_event_player,last_event_damage,last_event_at,last_catch_poke,last_catch_player,last_catch_at";
+  "health,max_health,kind,expires_at,battle_log,poke,updated_at,last_event_kind,last_event_player,last_event_damage,last_event_at,last_catch_poke,last_catch_player,last_catch_at";
 const LEGACY_OVERLAY_COLUMNS = "health,poke,updated_at";
 
 const channelPromises = new Map<string, Promise<string | null>>();
@@ -64,6 +64,10 @@ export function getActivePoke(channel: string): Promise<ActivePoke | null> {
         data = legacyResult.data
           ? {
               ...legacyResult.data,
+              max_health: 50,
+              kind: "foe",
+              expires_at: null,
+              battle_log: [],
               last_event_kind: null,
               last_event_player: null,
               last_event_damage: null,
@@ -84,6 +88,10 @@ export function getActivePoke(channel: string): Promise<ActivePoke | null> {
       return {
         health: data.health,
         poke: data.poke,
+        maxHealth: "max_health" in data && typeof data.max_health === "number" ? data.max_health : 50,
+        kind: "kind" in data && (data.kind === "boss" || data.kind === "lull") ? data.kind : "foe",
+        expiresAt: "expires_at" in data ? (data.expires_at as string | null) : null,
+        battleLog: parseBattleLog("battle_log" in data ? data.battle_log : []),
         updatedAt: data.updated_at,
         lastEventKind: "last_event_kind" in data ? data.last_event_kind : null,
         lastEventPlayer:

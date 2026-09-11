@@ -1,6 +1,13 @@
+export type EncounterKind = "foe" | "boss" | "lull";
+
 export type ActivePoke = {
   health: number;
   poke: string;
+  /** Field HP of the current enemy (Phase 3); older rows default to 50. */
+  maxHealth?: number;
+  kind?: EncounterKind;
+  expiresAt?: string | null;
+  battleLog?: string[];
   updatedAt?: string;
   lastEventKind?: string | null;
   lastEventPlayer?: string | null;
@@ -15,6 +22,10 @@ export type OverlaySize = "auto" | "compact" | "standard" | "large";
 export type OverlaySnapshot = {
   health: number | null;
   poke: string | null;
+  maxHealth?: number | null;
+  kind?: string | null;
+  expiresAt?: string | null;
+  battleLog?: unknown;
   updatedAt: string | null;
   lastEventKind?: string | null;
   lastEventPlayer?: string | null;
@@ -25,7 +36,7 @@ export type OverlaySnapshot = {
   lastCatchAt?: string | null;
 };
 export type OverlayEvent = {
-  kind: "hit" | "caught" | null;
+  kind: "hit" | "caught" | "spawn" | "fled" | null;
   player: string | null;
   damage: number | null;
   at: string | null;
@@ -47,14 +58,26 @@ type ActivePokeChange = {
   new: Record<string, unknown>;
 };
 
-export function getHealthPercent(health: number) {
-  return Math.max(0, Math.min(100, health * 2));
+export const DEFAULT_MAX_HEALTH = 50;
+
+export function getHealthPercent(health: number, maxHealth = DEFAULT_MAX_HEALTH) {
+  const max = maxHealth > 0 ? maxHealth : DEFAULT_MAX_HEALTH;
+  return Math.max(0, Math.min(100, (health / max) * 100));
 }
 
-export function getHealthTone(health: number) {
-  if (health <= 15) return "low";
-  if (health <= 30) return "medium";
+export function getHealthTone(health: number, maxHealth = DEFAULT_MAX_HEALTH) {
+  const pct = getHealthPercent(health, maxHealth);
+  if (pct <= 30) return "low";
+  if (pct <= 60) return "medium";
   return "high";
+}
+
+export function parseBattleLog(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((x): x is string => typeof x === "string").slice(-6) : [];
+}
+
+export function parseEncounterKind(value: unknown): EncounterKind {
+  return value === "boss" || value === "lull" ? value : "foe";
 }
 
 export function parseOverlaySize(value: string | undefined): OverlaySize {
@@ -88,11 +111,9 @@ export function applyOverlaySnapshot(
     return current;
   }
 
+  const k = snapshot.lastEventKind;
   const event: OverlayEvent = {
-    kind:
-      snapshot.lastEventKind === "hit" || snapshot.lastEventKind === "caught"
-        ? snapshot.lastEventKind
-        : null,
+    kind: k === "hit" || k === "caught" || k === "spawn" || k === "fled" ? k : null,
     player: snapshot.lastEventPlayer ?? null,
     damage: snapshot.lastEventDamage ?? null,
     at: snapshot.lastEventAt ?? null,
@@ -109,7 +130,14 @@ export function applyOverlaySnapshot(
       : current.catch;
 
   return {
-    poke: { health: snapshot.health, poke: snapshot.poke },
+    poke: {
+      health: snapshot.health,
+      poke: snapshot.poke,
+      maxHealth: typeof snapshot.maxHealth === "number" ? snapshot.maxHealth : DEFAULT_MAX_HEALTH,
+      kind: parseEncounterKind(snapshot.kind),
+      expiresAt: snapshot.expiresAt ?? null,
+      battleLog: parseBattleLog(snapshot.battleLog),
+    },
     updatedAt: snapshot.updatedAt,
     event,
     catch: catch_,
@@ -124,10 +152,17 @@ export function applyActivePokeChange(
     return null;
   }
 
-  const { health, poke } = change.new;
+  const { health, poke, max_health, kind, expires_at, battle_log } = change.new;
   if (typeof health !== "number" || typeof poke !== "string" || !poke) {
     return current;
   }
 
-  return { health, poke };
+  return {
+    health,
+    poke,
+    maxHealth: typeof max_health === "number" ? max_health : DEFAULT_MAX_HEALTH,
+    kind: parseEncounterKind(kind),
+    expiresAt: typeof expires_at === "string" ? expires_at : null,
+    battleLog: parseBattleLog(battle_log),
+  };
 }

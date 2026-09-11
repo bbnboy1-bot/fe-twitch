@@ -9,6 +9,7 @@ import { createServer } from "node:http";
 import tmi from "tmi.js";
 
 import { getAppOrigin } from "@/features/auth/origin";
+import { recruitRandomUnit } from "@/features/units/roster";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 import { ChannelSynchronizer } from "./channel-sync";
@@ -34,7 +35,14 @@ const client = tmi.Client({
 const commandGate = new CommandGate();
 const queue = new ChannelQueue();
 const store = new SupabaseGameStore(supabase);
-const game = new PokemonGame(store, appUrl);
+const game = new PokemonGame(store, appUrl, {
+  getRandomPokemon: async () => recruitRandomUnit().id,
+  rollDamage: () => Math.floor(Math.random() * 10) + 5,
+  // Timer-driven events (spawns, raids, boss timers) share the per-channel queue
+  // with chat commands so they never interleave, and announce via the live client.
+  runInChannel: (channel, op) => queue.run(channel, op),
+  say: (channel, message) => client.say(channel, message).then(() => undefined),
+});
 
 let connected = false;
 const channelSynchronizer = new ChannelSynchronizer({
@@ -52,6 +60,7 @@ const channelSynchronizer = new ChannelSynchronizer({
     await client.join(channel);
   },
   part: async (channel) => {
+    game.release(channel);
     await client.part(channel);
   },
   initialize: (channel) => game.initialize(channel),

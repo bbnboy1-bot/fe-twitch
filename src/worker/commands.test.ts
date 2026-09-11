@@ -46,7 +46,7 @@ describe("parseGamePlayer", () => {
   it("requires the immutable Twitch user ID", () => {
     expect(parseGamePlayer({ username: "Viewer", "user-id": "1234" })).toEqual({
       twitchId: "1234",
-      username: "viewer",
+      username: "viewer", isMod: false,
     });
     expect(parseGamePlayer({ username: "Viewer" })).toBeNull();
     expect(parseGamePlayer({ "user-id": "1234" })).toBeNull();

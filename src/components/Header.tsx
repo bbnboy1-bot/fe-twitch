@@ -10,6 +10,7 @@ import UserDropdown from "./UserDropdown";
 const menuItems = [
   { name: "Army", path: "/collections" },
   { name: "Units", path: "/units" },
+  { name: "Leaderboard", path: "/leaderboard" },
   { name: "Gift", path: "/gift" },
   { name: "Trade", path: "/trade" },
 ];
