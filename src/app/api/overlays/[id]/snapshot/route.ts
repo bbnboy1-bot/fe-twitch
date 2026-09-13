@@ -26,6 +26,7 @@ export async function GET(
             kind: poke.kind ?? "foe",
             expiresAt: poke.expiresAt ?? null,
             battleLog: poke.battleLog ?? [],
+            arena: poke.arena ?? {},
             updatedAt: poke.updatedAt ?? null,
             lastEventKind: poke.lastEventKind ?? null,
             lastEventPlayer: poke.lastEventPlayer ?? null,

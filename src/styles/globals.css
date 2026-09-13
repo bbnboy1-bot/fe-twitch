@@ -719,3 +719,313 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Arena overlay (Phase 6). A wide strip (about 1200x100 in OBS, any size works).
+   Everything scales from --unit-size, which the view derives from the strip height.
+   --------------------------------------------------------------------------- */
+@layer components {
+  .arena-viewport {
+    background: transparent;
+  }
+
+  .arena {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font-custom), ui-sans-serif, system-ui, sans-serif;
+    color: oklch(var(--foreground));
+    user-select: none;
+  }
+
+  .arena-bg {
+    position: absolute;
+    inset: 0;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  .arena-field {
+    position: absolute;
+    inset: 0;
+  }
+
+  /* Each unit is anchored by its feet: `left` is the x position, lane sets depth. */
+  .arena-unit {
+    --lane-step: 4.5%;
+    position: absolute;
+    bottom: calc(3% + (3 - var(--lane)) * var(--lane-step));
+    width: var(--unit-size);
+    transform: translateX(-50%);
+    transition: left var(--move-ms, 0ms) linear;
+    will-change: left;
+    pointer-events: none;
+  }
+
+  .arena-unit-body {
+    position: relative;
+    width: var(--unit-size);
+    height: var(--unit-size);
+    transform: scaleX(var(--facing, 1));
+    transform-origin: 50% 100%;
+  }
+
+  .arena-unit-art {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: end center;
+    transform-origin: 50% 100%;
+    filter: drop-shadow(0 2px 0 oklch(0.1 0.02 258 / 0.55));
+  }
+  .arena-unit-art > svg,
+  .arena-unit-art > img {
+    width: 100%;
+    height: 100%;
+    display: block;
+    image-rendering: pixelated;
+  }
+
+  .arena-unit-shadow {
+    position: absolute;
+    left: 50%;
+    bottom: -4%;
+    width: 70%;
+    height: 14%;
+    transform: translateX(-50%);
+    border-radius: 50%;
+    background: oklch(0.1 0.02 258 / 0.45);
+  }
+
+  .arena-unit-label {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + 0.12em);
+    transform: translateX(-50%);
+    display: grid;
+    justify-items: center;
+    gap: 0.15em;
+    width: max-content;
+    max-width: calc(var(--unit-size) * 2.4);
+    font-size: clamp(9px, calc(var(--unit-size) * 0.19), 15px);
+    line-height: 1.05;
+    text-align: center;
+    opacity: 1;
+    transition: opacity 400ms ease;
+  }
+  .arena-unit-label[data-visible="false"] {
+    opacity: 0;
+  }
+  .arena-unit-name {
+    padding: 0.1em 0.45em;
+    border-radius: 0.3em;
+    background: oklch(0.14 0.02 258 / 0.78);
+    color: oklch(var(--foreground));
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .arena-unit-epithet {
+    font-size: 0.8em;
+    color: oklch(var(--primary));
+    white-space: nowrap;
+  }
+  .arena-unit[data-role="boss"] .arena-unit-name {
+    color: oklch(var(--primary));
+    font-family: var(--font-display), Georgia, serif;
+    border: 1px solid oklch(var(--accent) / 0.7);
+  }
+  .arena-unit[data-role="enemy"] .arena-unit-name {
+    border: 1px solid oklch(var(--accent) / 0.5);
+  }
+  .arena-unit[data-role="boss"] .arena-unit-art {
+    filter: drop-shadow(0 0 6px oklch(var(--accent) / 0.75)) drop-shadow(0 2px 0 oklch(0.1 0.02 258 / 0.55));
+  }
+
+  .arena-unit-hp {
+    display: block;
+    width: calc(var(--unit-size) * 0.9);
+    height: 0.32em;
+    border-radius: 999px;
+    background: oklch(0.14 0.02 258 / 0.85);
+    overflow: hidden;
+  }
+  .arena-unit-hp > span {
+    display: block;
+    height: 100%;
+    background: oklch(var(--success));
+    transition: width 350ms ease-out;
+  }
+  .arena-unit-hp[data-tone="mid"] > span {
+    background: oklch(var(--warning));
+  }
+  .arena-unit-hp[data-tone="low"] > span {
+    background: oklch(var(--destructive));
+  }
+
+  .arena-unit[data-dim="true"] .arena-unit-art {
+    opacity: 0.75;
+  }
+  .arena-unit[data-routed="true"] .arena-unit-art {
+    filter: grayscale(1) brightness(0.7) drop-shadow(0 2px 0 oklch(0.1 0.02 258 / 0.55));
+  }
+
+  /* Actions. Lunges are along the facing axis so the body transform handles direction. */
+  .arena-unit[data-action="walk"] .arena-unit-art {
+    animation: arena-bob 420ms ease-in-out infinite;
+  }
+  .arena-unit[data-action="attack"] .arena-unit-art {
+    animation: arena-lunge 600ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .arena-unit[data-action="raid"] .arena-unit-art {
+    animation: arena-lunge 700ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .arena-unit[data-action="flinch"] .arena-unit-art {
+    animation: arena-flinch 450ms ease-out;
+  }
+  .arena-unit[data-action="down"] .arena-unit-art {
+    animation: arena-down 700ms cubic-bezier(0.3, 0.7, 0.4, 1) forwards;
+  }
+  .arena-unit[data-routed="true"][data-action="idle"] .arena-unit-art {
+    transform: rotate(78deg) translate(10%, 4%);
+  }
+  .arena-unit[data-action="heal"] .arena-unit-art {
+    animation: arena-heal 900ms ease-out;
+  }
+  .arena-unit[data-action="enter"] {
+    animation: arena-enter 800ms cubic-bezier(0.2, 0.9, 0.3, 1);
+  }
+  .arena-unit[data-action="leave"] {
+    animation: arena-leave 1500ms ease-in forwards;
+  }
+  .arena-unit[data-role="enemy"][data-action="down"] .arena-unit-art,
+  .arena-unit[data-role="boss"][data-action="down"] .arena-unit-art {
+    animation: arena-down 900ms cubic-bezier(0.3, 0.7, 0.4, 1) forwards, arena-fade 1500ms ease-in forwards;
+  }
+
+  .arena-float {
+    position: absolute;
+    bottom: calc(3% + (3 - var(--lane)) * 4.5% + var(--unit-size) * 1.05);
+    transform: translateX(-50%);
+    font-family: var(--font-display), Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(11px, calc(var(--unit-size) * 0.34), 26px);
+    color: oklch(var(--foreground));
+    text-shadow: 0 1px 0 oklch(0.1 0.02 258), 0 0 6px oklch(0.1 0.02 258 / 0.8);
+    animation: arena-float 950ms ease-out forwards;
+    pointer-events: none;
+    z-index: 40;
+  }
+  .arena-float[data-tone="crit"] {
+    color: oklch(var(--primary));
+    font-size: clamp(13px, calc(var(--unit-size) * 0.46), 34px);
+  }
+  .arena-float[data-tone="hurt"] {
+    color: oklch(0.78 0.16 28);
+  }
+  .arena-float[data-tone="heal"] {
+    color: oklch(var(--success));
+  }
+  .arena-float[data-tone="miss"] {
+    color: oklch(var(--muted-foreground));
+    font-style: italic;
+    font-weight: 500;
+  }
+
+  .arena-banner {
+    position: absolute;
+    left: 50%;
+    top: 6%;
+    transform: translateX(-50%);
+    padding: 0.2em 1.1em;
+    border: 1px solid oklch(var(--primary) / 0.6);
+    border-radius: 0.3em;
+    background: oklch(0.14 0.025 258 / 0.85);
+    color: oklch(var(--primary));
+    font-family: var(--font-display), Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(11px, calc(var(--arena-h) * 0.17), 22px);
+    white-space: nowrap;
+    animation: arena-banner 3200ms ease-in-out forwards;
+    z-index: 50;
+  }
+  .arena-banner[data-tone="boss"] {
+    border-color: oklch(var(--accent) / 0.8);
+    box-shadow: 0 0 12px oklch(var(--accent) / 0.5);
+  }
+  .arena-banner[data-tone="escape"] {
+    color: oklch(var(--muted-foreground));
+  }
+
+  .arena-quiet {
+    position: absolute;
+    right: 3%;
+    top: 8%;
+    font-size: clamp(9px, calc(var(--arena-h) * 0.12), 14px);
+    color: oklch(var(--muted-foreground) / 0.8);
+    font-style: italic;
+  }
+
+  .arena-debug {
+    position: absolute;
+    left: 0.4em;
+    top: 0.3em;
+    font: 10px ui-monospace, monospace;
+    color: oklch(var(--foreground) / 0.8);
+    background: oklch(0.1 0.02 258 / 0.6);
+    padding: 0.1em 0.4em;
+    z-index: 60;
+  }
+}
+
+@keyframes arena-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6%); }
+}
+@keyframes arena-lunge {
+  0% { transform: translateX(0); }
+  35% { transform: translateX(38%) rotate(-8deg); }
+  100% { transform: translateX(0); }
+}
+@keyframes arena-flinch {
+  0% { transform: translateX(0); filter: brightness(1.8) drop-shadow(0 2px 0 oklch(0.1 0.02 258 / 0.55)); }
+  40% { transform: translateX(-16%) rotate(6deg); }
+  100% { transform: translateX(0); }
+}
+@keyframes arena-down {
+  0% { transform: rotate(0) translate(0, 0); }
+  100% { transform: rotate(78deg) translate(10%, 4%); }
+}
+@keyframes arena-fade {
+  0%, 55% { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes arena-heal {
+  0% { filter: brightness(1) drop-shadow(0 0 0 oklch(var(--success) / 0)); transform: translateY(0); }
+  40% { filter: brightness(1.6) drop-shadow(0 0 8px oklch(var(--success) / 0.9)); transform: translateY(-10%); }
+  100% { filter: brightness(1) drop-shadow(0 2px 0 oklch(0.1 0.02 258 / 0.55)); transform: translateY(0); }
+}
+@keyframes arena-enter {
+  0% { transform: translateX(120%); opacity: 0; }
+  100% { transform: translateX(-50%); opacity: 1; }
+}
+@keyframes arena-leave {
+  0% { transform: translateX(-50%); opacity: 1; }
+  100% { transform: translateX(160%); opacity: 0; }
+}
+@keyframes arena-float {
+  0% { opacity: 0; transform: translate(-50%, 30%) scale(0.7); }
+  20% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
+  40% { transform: translate(-50%, -10%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -90%) scale(1); }
+}
+@keyframes arena-banner {
+  0% { opacity: 0; transform: translate(-50%, -40%); }
+  12% { opacity: 1; transform: translate(-50%, 0); }
+  82% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -20%); }
+}

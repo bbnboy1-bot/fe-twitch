@@ -1,5 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
+import type { ArenaState } from "@/features/arena/events";
+
 import type {
   AttackInput,
   AttackResult,
@@ -28,6 +30,11 @@ export class SupabaseGameStore implements GameStore {
 
   async logBattle(channel: string, line: string) {
     const { error } = await this.client.rpc("fe_log_battle", { p_channel: channel, p_line: line });
+    if (error) throw error;
+  }
+
+  async syncArena(channel: string, arena: ArenaState) {
+    const { error } = await this.client.rpc("fe_arena_sync", { p_channel: channel, p_arena: arena });
     if (error) throw error;
   }
 

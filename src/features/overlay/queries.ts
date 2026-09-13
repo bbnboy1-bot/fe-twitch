@@ -1,9 +1,13 @@
 import { createPublicClient } from "@/lib/supabase/public";
 
+import { parseArenaState } from "@/features/arena/events";
+
 import { type ActivePoke, parseBattleLog } from "./model";
 
 const OVERLAY_EVENT_COLUMNS =
-  "health,max_health,kind,expires_at,battle_log,poke,updated_at,last_event_kind,last_event_player,last_event_damage,last_event_at,last_catch_poke,last_catch_player,last_catch_at";
+  "health,max_health,kind,expires_at,battle_log,arena,poke,updated_at,last_event_kind,last_event_player,last_event_damage,last_event_at,last_catch_poke,last_catch_player,last_catch_at";
+/** Same without Phase 6's `arena`, so the card keeps working until that migration lands. */
+const PHASE5_OVERLAY_COLUMNS = OVERLAY_EVENT_COLUMNS.replace("arena,", "");
 const LEGACY_OVERLAY_COLUMNS = "health,poke,updated_at";
 
 const channelPromises = new Map<string, Promise<string | null>>();
@@ -52,6 +56,17 @@ export function getActivePoke(channel: string): Promise<ActivePoke | null> {
         .eq("channel", channel)
         .maybeSingle();
 
+      // Database without the Phase 6 arena column yet: drop just that column.
+      if (error?.code === "42703") {
+        const phase5 = await supabase
+          .from("active_pokes")
+          .select(PHASE5_OVERLAY_COLUMNS)
+          .eq("channel", channel)
+          .maybeSingle();
+        data = phase5.data ? ({ ...(phase5.data as unknown as Record<string, unknown>), arena: {} } as unknown as typeof data) : null;
+        error = phase5.error;
+      }
+
       // Local or stale databases can lag behind the overlay-events migration.
       // In that case, keep the overlay available without event badges.
       if (error?.code === "42703") {
@@ -68,6 +83,7 @@ export function getActivePoke(channel: string): Promise<ActivePoke | null> {
               kind: "foe",
               expires_at: null,
               battle_log: [],
+              arena: {},
               last_event_kind: null,
               last_event_player: null,
               last_event_damage: null,
@@ -92,6 +108,7 @@ export function getActivePoke(channel: string): Promise<ActivePoke | null> {
         kind: "kind" in data && (data.kind === "boss" || data.kind === "lull") ? data.kind : "foe",
         expiresAt: "expires_at" in data ? (data.expires_at as string | null) : null,
         battleLog: parseBattleLog("battle_log" in data ? data.battle_log : []),
+        arena: parseArenaState("arena" in data ? data.arena : {}),
         updatedAt: data.updated_at,
         lastEventKind: "last_event_kind" in data ? data.last_event_kind : null,
         lastEventPlayer:

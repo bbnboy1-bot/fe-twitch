@@ -16,11 +16,23 @@ export type Fighter = {
   bonusHp?: number;
 };
 
+export type DuelStrikeResult = {
+  /** Username of the striker. */
+  att: string;
+  hit: boolean;
+  crit: boolean;
+  damage: number;
+  /** Defender HP after this strike. */
+  hpLeft: number;
+};
+
 export type DuelResult = {
   winner: string;
   loser: string;
   rounds: number;
   log: string[];
+  /** Blow-by-blow record, used by the arena overlay to replay the duel. */
+  strikes: DuelStrikeResult[];
   finalHp: Record<string, number>;
 };
 
@@ -33,6 +45,7 @@ export function resolveDuel(a: Fighter, b: Fighter, rng: Rng = Math.random): Due
     [b.username]: b.unit.base.hp + (b.bonusHp ?? 0),
   };
   const log: string[] = [];
+  const strikes: DuelStrikeResult[] = [];
   const side = (f: Fighter) => ({
     stats: f.unit.base,
     weapon: f.weapon ?? f.unit.weapon,
@@ -44,14 +57,16 @@ export function resolveDuel(a: Fighter, b: Fighter, rng: Rng = Math.random): Due
 
   while (round < MAX_ROUNDS) {
     round++;
-    const strikes = strikesFor(att.unit.base, def.unit.base);
-    for (let i = 0; i < strikes; i++) {
+    const count = strikesFor(att.unit.base, def.unit.base);
+    for (let i = 0; i < count; i++) {
       const roll = resolveStrike(side(att), side(def), rng);
       if (!roll.hit) {
         log.push(`${att.unit.name} misses ${def.unit.name}!`);
+        strikes.push({ att: att.username, hit: false, crit: false, damage: 0, hpLeft: hp[def.username] });
         continue;
       }
       hp[def.username] = Math.max(0, hp[def.username] - roll.damage);
+      strikes.push({ att: att.username, hit: true, crit: roll.crit, damage: roll.damage, hpLeft: hp[def.username] });
       log.push(
         `${att.unit.name} ${roll.crit ? "CRITS" : "strikes"} ${def.unit.name} for ${roll.damage}!` +
           (roll.triangle === 1 ? " (weapon advantage)" : ""),
@@ -62,6 +77,7 @@ export function resolveDuel(a: Fighter, b: Fighter, rng: Rng = Math.random): Due
           loser: def.username,
           rounds: round,
           log,
+          strikes,
           finalHp: hp,
         };
       }
@@ -73,7 +89,7 @@ export function resolveDuel(a: Fighter, b: Fighter, rng: Rng = Math.random): Due
   const pct = (f: Fighter) => hp[f.username] / (f.unit.base.hp + (f.bonusHp ?? 0));
   const winner = pct(b) > pct(a) ? b : a;
   const loser = winner === a ? b : a;
-  return { winner: winner.username, loser: loser.username, rounds: round, log, finalHp: hp };
+  return { winner: winner.username, loser: loser.username, rounds: round, log, strikes, finalHp: hp };
 }
 
 /** Pick a collector's champion: best rarity, then stat total. */

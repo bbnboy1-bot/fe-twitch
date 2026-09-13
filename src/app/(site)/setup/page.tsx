@@ -1,3 +1,4 @@
+import { ArenaSourceCard } from "@/components/ArenaSourceCard";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { StreamerSetup } from "@/components/StreamerSetup";
 import { getAppOrigin } from "@/features/auth/origin";
@@ -37,6 +38,9 @@ export default async function SetupPage() {
       </div>
       <div className="game-panel p-5 tablet:p-7">
         <StreamerSetup accountId={account.id} url={url} />
+      </div>
+      <div className="game-panel p-5 tablet:p-7">
+        <ArenaSourceCard url={`${url}/arena`} />
       </div>
     </section>
   );

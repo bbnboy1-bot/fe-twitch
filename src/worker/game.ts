@@ -1,5 +1,6 @@
 import type tmi from "tmi.js";
 
+import { type ArenaEvent, type ArenaEventInput, type ArenaState, ARENA_VERSION, appendArenaEvent } from "@/features/arena/events";
 import { GOLD, STAFF_BONUS_HP, findShopItem, shopListing } from "@/features/economy/shop";
 import { EncounterDirector, type Scheduler } from "@/features/encounters/director";
 import { EncounterManager, type Fighter } from "@/features/encounters/manager";
@@ -101,6 +102,9 @@ export interface GameStore {
   endEncounter(_channel: string): Promise<void>;
   // eslint-disable-next-line no-unused-vars
   logBattle(_channel: string, _line: string): Promise<void>;
+  /** Mirrors fighters + recent structured events for the arena overlay (Phase 6). */
+  // eslint-disable-next-line no-unused-vars
+  syncArena(_channel: string, _arena: ArenaState): Promise<void>;
   // eslint-disable-next-line no-unused-vars
   attack(_input: AttackInput): Promise<AttackResult>;
   claimWelcomePack(
@@ -145,6 +149,10 @@ export class PokemonGame {
   private readonly field = new EncounterManager();
   private readonly director: EncounterDirector | null;
   private say: Announcer;
+  /** Recent arena events per channel (worker memory; the DB holds a copy). */
+  private readonly arenaEvents = new Map<string, ArenaEvent[]>();
+  /** Monotonic event id. Seeded from the clock so a restart never reuses ids the overlay has seen. */
+  private arenaSeq = 0;
 
   constructor(
     store: GameStore,
@@ -186,6 +194,37 @@ export class PokemonGame {
     }
   }
 
+  /**
+   * Arena overlay event: appends to the channel's event list, snapshots the
+   * current fighters, and writes both to the DB. Never blocks the game.
+   */
+  private async emit(channel: string, event: ArenaEventInput) {
+    if (this.arenaSeq === 0) this.arenaSeq = this.now();
+    const full = { ...event, id: ++this.arenaSeq, at: new Date(this.now()).toISOString() } as ArenaEvent;
+    const events = appendArenaEvent(this.arenaEvents.get(channel) ?? [], full);
+    this.arenaEvents.set(channel, events);
+    const e = this.field.current(channel);
+    const arena: ArenaState = {
+      v: ARENA_VERSION,
+      fighters: e
+        ? [...e.fighters.values()].map((f) => ({
+            name: f.username,
+            unitId: f.unitId,
+            hp: f.hp,
+            maxHp: f.maxHp,
+            routed: f.routed,
+            damage: f.damageDealt,
+          }))
+        : [],
+      events,
+    };
+    try {
+      await this.store.syncArena(channel, arena);
+    } catch (error) {
+      console.error("Arena sync failed:", error);
+    }
+  }
+
   /** Bot joined a channel: first foe arrives right away, boss clock starts. */
   async initialize(channel: string) {
     this.director?.start(channel);
@@ -208,6 +247,7 @@ export class PokemonGame {
     await this.store.spawnEncounter({ channel, poke: unit.id, maxHealth: maxHp, kind: "foe", durationSeconds: null });
     this.director?.enemySpawned(channel, "foe");
     await this.log(channel, `${unit.name} takes the field`);
+    await this.emit(channel, { type: "spawn", enemy: unit.id, kind: "foe", maxHp });
     await this.say(channel, `⚠️ ${displayUnit(unit.id)} takes the field! ${maxHp} HP. Type !fe fight`);
   }
 
@@ -227,6 +267,7 @@ export class PokemonGame {
     });
     this.director?.enemySpawned(channel, "boss");
     await this.log(channel, `BOSS ${boss.name} ${boss.epithet} arrives`);
+    await this.emit(channel, { type: "spawn", enemy: boss.id, kind: "boss", maxHp });
     const minutes = Math.round(ENCOUNTER.bossDurationMs / 60_000);
     await this.say(
       channel,
@@ -251,6 +292,7 @@ export class PokemonGame {
     const label = e.kind === "boss" ? `${e.unit.name} ${e.unit.epithet}` : e.unit.name;
     if (!strike.hit) {
       await this.log(channel, `${e.unit.name} charges ${target.username} and misses`);
+      await this.emit(channel, { type: "raid", player: target.username, unitId: target.unitId, damage: 0, crit: false, miss: true, routed: false });
       await this.say(channel, `${label} charges @${target.username}'s ${champion.name} - and misses!`);
       return;
     }
@@ -259,6 +301,15 @@ export class PokemonGame {
       channel,
       `${e.unit.name} ${strike.crit ? "CRITS" : "raids"} ${target.username} for ${strike.damage}${f?.routed ? " - routed!" : ""}`,
     );
+    await this.emit(channel, {
+      type: "raid",
+      player: target.username,
+      unitId: target.unitId,
+      damage: strike.damage,
+      crit: strike.crit,
+      miss: false,
+      routed: Boolean(f?.routed),
+    });
     await this.say(channel, raidLine(label, target.username, champion, strike.damage, strike.crit, f));
   }
 
@@ -271,6 +322,7 @@ export class PokemonGame {
     const payouts = escapePayouts(e.contributions);
     await Promise.all(payouts.map((p) => this.store.earnGold({ channel, user: p.user, amount: p.gold })));
     await this.log(channel, `${e.unit.name} escapes with ${e.hp} HP`);
+    await this.emit(channel, { type: "escape", enemy: e.unit.id });
     await this.say(
       channel,
       `${e.unit.name} ${e.unit.epithet} escapes with ${e.hp}/${e.maxHp} HP left!` +
@@ -434,6 +486,7 @@ export class PokemonGame {
     }
     const healed = this.field.heal(channel, player.username);
     await this.log(channel, `${player.username} heals ${getUnitById(f.unitId)?.name ?? "their champion"}`);
+    await this.emit(channel, { type: "heal", player: player.username, unitId: f.unitId, hp: healed?.maxHp ?? f.maxHp });
     await client.say(
       channel,
       `✨ @${player.username}'s ${getUnitById(f.unitId)?.name ?? "champion"} is restored to ${healed?.maxHp} HP (${staff.uses} staff uses left).`,
@@ -480,6 +533,14 @@ export class PokemonGame {
     }
     const remaining = this.field.damageEnemy(channel, player.username, strike.damage);
     await this.store.earnGold({ channel, user: player.username, amount: GOLD.bossHit });
+    await this.emit(channel, {
+      type: "hit",
+      player: player.username,
+      unitId: fighter.unitId,
+      damage: strike.damage,
+      crit: strike.crit,
+      enemyHp: Math.max(0, remaining),
+    });
 
     if (result.outcome === "caught" || remaining <= 0) {
       return this.defeated(client, channel, player);
@@ -492,12 +553,21 @@ export class PokemonGame {
         const f = this.field.damageFighter(channel, player.username, counter.damage);
         if (f?.routed) {
           await this.log(channel, `${e.unit.name} routs ${player.username}'s ${champion.name}`);
+          await this.emit(channel, { type: "rout", player: player.username, unitId: fighter.unitId, damage: counter.damage, enemy: e.unit.id });
           await client.say(
             channel,
             `${strike.crit ? "💥 CRIT! " : ""}@${player.username} hits ${e.unit.name} for ${strike.damage} (${remaining}/${e.maxHp}) - but ${e.unit.name} strikes back for ${counter.damage} and ${champion.name} is routed!`,
           );
           return;
         }
+        await this.emit(channel, {
+          type: "counter",
+          player: player.username,
+          unitId: fighter.unitId,
+          damage: counter.damage,
+          crit: counter.crit,
+          hpLeft: f?.hp ?? 0,
+        });
       }
     }
     // Ordinary hits stay silent in chat (the overlay shows them); crits get a shout.
@@ -508,6 +578,7 @@ export class PokemonGame {
   }
 
   private async defeated(client: tmi.Client, channel: string, player: GamePlayer) {
+    const finisher = this.field.getFighter(channel, player.username);
     const e = this.field.end(channel);
     if (!e) return;
     await this.store.earnGold({ channel, user: player.username, amount: GOLD.recruit });
@@ -516,12 +587,14 @@ export class PokemonGame {
       await Promise.all(payouts.map((p) => this.store.earnGold({ channel, user: p.user, amount: p.gold })));
       const top = payouts.slice(0, 3).map((p) => `@${p.user} +${p.gold}g`).join(", ");
       await this.log(channel, `${player.username} slays ${e.unit.name}! ${top.replace(/@/g, "")}`);
+      await this.emit(channel, { type: "recruit", player: player.username, unitId: finisher?.unitId ?? null, enemy: e.unit.id, boss: true });
       await client.say(
         channel,
         `🏆 ${e.unit.name} ${e.unit.epithet} falls! @${player.username} lands the final blow and recruits them! ${payouts.length} fighters share the spoils: ${top}${payouts.length > 3 ? "…" : ""}`,
       );
     } else {
       await this.log(channel, `${player.username} recruits ${e.unit.name}`);
+      await this.emit(channel, { type: "recruit", player: player.username, unitId: finisher?.unitId ?? null, enemy: e.unit.id, boss: false });
       await client.say(channel, `⚔️ @${player.username} bested and recruited ${displayUnit(e.unit.id)}! +${GOLD.recruit}g. The field is quiet...`);
     }
     this.director?.fieldCleared(channel);
@@ -612,6 +685,13 @@ export class PokemonGame {
       this.store.earnGold({ channel, user: result.loser, amount: GOLD.duelLoss }),
     ]);
     const winnerUnit = result.winner === challenger ? unitA : unitB;
+    await this.emit(channel, {
+      type: "duel",
+      a: { player: challenger, unitId: unitA.id, maxHp: unitA.base.hp + (weaponA?.kind === "staff" ? STAFF_BONUS_HP : 0) },
+      b: { player: player.username, unitId: unitB.id, maxHp: unitB.base.hp + (weaponB?.kind === "staff" ? STAFF_BONUS_HP : 0) },
+      strikes: result.strikes,
+      winner: result.winner,
+    });
     await client.say(
       channel,
       `🏆 @${result.winner}'s ${winnerUnit.name} ${winnerUnit.epithet} wins the duel against @${result.loser} in ${result.rounds} rounds! +${GOLD.duelWin}g (loser +${GOLD.duelLoss}g).`,

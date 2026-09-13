@@ -1,6 +1,7 @@
 import type tmi from "tmi.js";
 import { describe, expect, it } from "vitest";
 
+import type { ArenaState } from "@/features/arena/events";
 import type { Scheduler, Timer } from "@/features/encounters/director";
 import { ENCOUNTER } from "@/features/encounters/rules";
 import { BOSSES } from "@/features/units/roster";
@@ -47,6 +48,7 @@ function createStore(overrides: StoreOverrides = {}) {
   const gold = new Map<string, number>();
   const attacks: AttackInput[] = [];
   const spawns: Array<{ poke: string; maxHealth: number; kind: string }> = [];
+  const arenas: ArenaState[] = [];
   const store: GameStore = {
     getUserUnitIds: async () => [],
     earnGold: async ({ user, amount }) => {
@@ -62,6 +64,9 @@ function createStore(overrides: StoreOverrides = {}) {
       spawns.push({ poke: input.poke, maxHealth: input.maxHealth, kind: input.kind });
     },
     logBattle: async () => undefined,
+    syncArena: async (_channel, arena) => {
+      arenas.push(arena);
+    },
     endEncounter: async () => {
       state.kind = "lull";
       state.health = 0;
@@ -82,7 +87,7 @@ function createStore(overrides: StoreOverrides = {}) {
     getLastCatch: async () => null,
     ...overrides,
   };
-  return { store, state, gold, attacks, spawns };
+  return { store, state, gold, attacks, spawns, arenas };
 }
 
 const viewer = { twitchId: "1234", username: "viewer" };
@@ -234,6 +239,61 @@ describe("PokemonGame encounters", () => {
     await game.initialize("streamer");
     await clock.advance(ENCOUNTER.bossMaxMs + 1);
     expect(messages.some((m) => m.message.includes("💀 BOSS"))).toBe(true);
+  });
+
+  it("mirrors fighters and structured events to the arena after each action", async () => {
+    const { game, client, arenas } = createGame({
+      store: { getUserUnitIds: async () => ["tamsin"] },
+      rng: sequence([0.5, 0, 0.5]),
+    });
+    await game.initialize("streamer");
+    const spawn = arenas.at(-1)!;
+    expect(spawn.events.at(-1)).toMatchObject({ type: "spawn", enemy: "bram", kind: "foe", maxHp: 48 });
+    expect(spawn.fighters).toEqual([]);
+
+    await game.handle("attack", client, "streamer", viewer);
+    // hit, then the counterattack that leaves Tamsin at 13/18
+    const types = arenas.at(-1)!.events.map((e) => e.type);
+    expect(types.slice(-2)).toEqual(["hit", "counter"]);
+    expect(arenas.at(-1)!.events.at(-2)).toMatchObject({ type: "hit", player: "viewer", unitId: "tamsin", damage: 7, crit: false, enemyHp: 41 });
+    expect(arenas.at(-1)!.fighters).toEqual([
+      { name: "viewer", unitId: "tamsin", hp: 13, maxHp: 18, routed: false, damage: 7 },
+    ]);
+
+    for (let i = 0; i < 3; i++) await game.handle("attack", client, "streamer", viewer);
+    expect(arenas.at(-1)!.events.at(-1)).toMatchObject({ type: "rout", player: "viewer", enemy: "bram" });
+    expect(arenas.at(-1)!.fighters[0]).toMatchObject({ routed: true, hp: 0 });
+
+    // Ids only ever go up, and the list stays bounded.
+    const ids = arenas.flatMap((a) => a.events.map((e) => e.id));
+    expect([...new Set(ids)]).toEqual([...new Set(ids)].sort((a, b) => a - b));
+    expect(arenas.at(-1)!.events.length).toBeLessThanOrEqual(12);
+  });
+
+  it("emits a recruit event with the finisher's champion and a boss flag", async () => {
+    const { game, client, arenas } = createGame({ store: { getUserUnitIds: async () => ["orrick"] } });
+    await game.initialize("streamer");
+    for (let i = 0; i < 6; i++) await game.handle("attack", client, "streamer", viewer);
+    expect(arenas.at(-1)!.events.at(-1)).toMatchObject({ type: "recruit", player: "viewer", unitId: "orrick", enemy: "bram", boss: false });
+    expect(arenas.at(-1)!.fighters).toEqual([]); // field cleared
+  });
+
+  it("emits a duel replay with both sides and every strike", async () => {
+    const { game, client, arenas, messages } = createGame({
+      store: { getUserUnitIds: async ({ user }) => (user === "viewer" ? ["nyx"] : ["bram"]) },
+      rng: () => 0.5,
+    });
+    await game.initialize("streamer");
+    await game.handle("duel", client, "streamer", viewer, "rival");
+    await game.handle("accept", client, "streamer", { twitchId: "2", username: "rival" });
+    const duel = arenas.at(-1)!.events.at(-1)!;
+    expect(duel.type).toBe("duel");
+    if (duel.type !== "duel") return;
+    expect(duel.a).toEqual({ player: "viewer", unitId: "nyx", maxHp: 22 });
+    expect(duel.b).toEqual({ player: "rival", unitId: "bram", maxHp: 24 });
+    expect(duel.strikes.length).toBeGreaterThan(0);
+    expect(duel.strikes.every((x) => x.att === "viewer" || x.att === "rival")).toBe(true);
+    expect(messages.at(-1)?.message).toContain(`@${duel.winner}'s`);
   });
 
   it("claims a welcome pack once using the stable Twitch identity", async () => {

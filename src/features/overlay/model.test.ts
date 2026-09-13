@@ -55,7 +55,7 @@ describe("applyOverlaySnapshot", () => {
         updatedAt: "2026-07-01T12:00:01.000Z",
       }),
     ).toEqual({
-      poke: { health: 20, poke: "eevee", maxHealth: 50, kind: "foe", expiresAt: null, battleLog: [] },
+      poke: { health: 20, poke: "eevee", maxHealth: 50, kind: "foe", expiresAt: null, battleLog: [], arena: { v: 1, fighters: [], events: [] } },
       updatedAt: "2026-07-01T12:00:01.000Z",
       event: { kind: null, player: null, damage: null, at: null },
       catch: { poke: null, player: null, at: null },
@@ -162,7 +162,7 @@ describe("applyActivePokeChange", () => {
         eventType: "INSERT",
         new: { channel: "pokitch", health: 50, poke: "pikachu" },
       }),
-    ).toEqual({ health: 50, poke: "pikachu", maxHealth: 50, kind: "foe", expiresAt: null, battleLog: [] });
+    ).toEqual({ health: 50, poke: "pikachu", maxHealth: 50, kind: "foe", expiresAt: null, battleLog: [], arena: { v: 1, fighters: [], events: [] } });
 
     expect(
       applyActivePokeChange(
@@ -172,7 +172,7 @@ describe("applyActivePokeChange", () => {
           new: { channel: "pokitch", health: 37, poke: "pikachu" },
         },
       ),
-    ).toEqual({ health: 37, poke: "pikachu", maxHealth: 50, kind: "foe", expiresAt: null, battleLog: [] });
+    ).toEqual({ health: 37, poke: "pikachu", maxHealth: 50, kind: "foe", expiresAt: null, battleLog: [], arena: { v: 1, fighters: [], events: [] } });
   });
 
   it("clears the encounter on delete and ignores malformed payloads", () => {

@@ -25,6 +25,7 @@ export type Database = {
         user_id: string;
       }>;
       active_pokes: Table<{
+        arena: unknown;
         battle_log: unknown;
         channel: string;
         created_at: string;

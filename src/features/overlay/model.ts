@@ -1,3 +1,5 @@
+import { type ArenaState, parseArenaState } from "@/features/arena/events";
+
 export type EncounterKind = "foe" | "boss" | "lull";
 
 export type ActivePoke = {
@@ -8,6 +10,8 @@ export type ActivePoke = {
   kind?: EncounterKind;
   expiresAt?: string | null;
   battleLog?: string[];
+  /** Structured fighters + events for the arena overlay (Phase 6). */
+  arena?: ArenaState;
   updatedAt?: string;
   lastEventKind?: string | null;
   lastEventPlayer?: string | null;
@@ -26,6 +30,7 @@ export type OverlaySnapshot = {
   kind?: string | null;
   expiresAt?: string | null;
   battleLog?: unknown;
+  arena?: unknown;
   updatedAt: string | null;
   lastEventKind?: string | null;
   lastEventPlayer?: string | null;
@@ -137,6 +142,7 @@ export function applyOverlaySnapshot(
       kind: parseEncounterKind(snapshot.kind),
       expiresAt: snapshot.expiresAt ?? null,
       battleLog: parseBattleLog(snapshot.battleLog),
+      arena: parseArenaState(snapshot.arena),
     },
     updatedAt: snapshot.updatedAt,
     event,
@@ -152,7 +158,7 @@ export function applyActivePokeChange(
     return null;
   }
 
-  const { health, poke, max_health, kind, expires_at, battle_log } = change.new;
+  const { health, poke, max_health, kind, expires_at, battle_log, arena } = change.new;
   if (typeof health !== "number" || typeof poke !== "string" || !poke) {
     return current;
   }
@@ -164,5 +170,6 @@ export function applyActivePokeChange(
     kind: parseEncounterKind(kind),
     expiresAt: typeof expires_at === "string" ? expires_at : null,
     battleLog: parseBattleLog(battle_log),
+    arena: parseArenaState(arena),
   };
 }
