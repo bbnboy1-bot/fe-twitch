@@ -88,9 +88,11 @@ describe("CommandGate", () => {
     expect(gate.consume("attack", "channel", "viewer")).toBe(false);
     expect(gate.consume("status", "channel", "viewer")).toBe(true);
 
-    now += 10_001;
-    expect(gate.consume("status", "channel", "another-viewer")).toBe(true);
+    now += 5_000;
     expect(gate.consume("attack", "channel", "viewer")).toBe(false);
+    now += 5_001;
+    expect(gate.consume("status", "channel", "another-viewer")).toBe(true);
+    expect(gate.consume("attack", "channel", "viewer")).toBe(true); // 10s fight cooldown elapsed
   });
 
   it("limits information responses per channel and command", () => {
@@ -118,12 +120,12 @@ describe("CommandGate", () => {
 
     expect(gate.getRemainingCooldown("attack", "channel", "viewer")).toBe(0);
     expect(gate.consume("attack", "channel", "viewer")).toBe(true);
-    expect(gate.getRemainingCooldown("attack", "channel", "viewer")).toBe(31);
+    expect(gate.getRemainingCooldown("attack", "channel", "viewer")).toBe(10);
 
-    now += 15_000;
-    expect(gate.getRemainingCooldown("attack", "channel", "viewer")).toBe(16);
+    now += 4_000;
+    expect(gate.getRemainingCooldown("attack", "channel", "viewer")).toBe(6);
 
-    now += 17_000;
+    now += 7_000;
     expect(gate.getRemainingCooldown("attack", "channel", "viewer")).toBe(0);
   });
 });

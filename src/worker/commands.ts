@@ -162,7 +162,7 @@ export class CommandGate {
   private readonly welcomePackCooldowns: CooldownStore;
 
   constructor(now: () => number = Date.now) {
-    this.attackCooldowns = new CooldownStore(31_000, now);
+    this.attackCooldowns = new CooldownStore(10_000, now);
     this.informationCooldowns = new CooldownStore(10_000, now);
     this.welcomePackCooldowns = new CooldownStore(31_000, now);
   }
