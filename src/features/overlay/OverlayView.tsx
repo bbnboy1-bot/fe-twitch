@@ -159,7 +159,7 @@ export function OverlayView({
         {!hideTicker && (
           <div className="overlay-ticker" role="marquee">
             <span className="overlay-ticker-text">
-              {GAME_NAME} • Type !fe fight to battle • Defeat a unit to recruit it • !fe recruit to start •
+              {GAME_NAME} • Type !fe fight to battle • Defeat a unit to recruit it • !fe start to pick a lord •
             </span>
           </div>
         )}
@@ -169,6 +169,8 @@ export function OverlayView({
         <span key={event.at} className="overlay-event" data-kind={event.kind} role="status">
           {event.kind === "caught"
             ? `⚔ RECRUITED @${event.player}`
+            : event.kind === "slain"
+              ? `⚔ SLAIN BY @${event.player}`
             : event.kind === "spawn"
               ? kind === "boss"
                 ? "💀 BOSS ARRIVES"

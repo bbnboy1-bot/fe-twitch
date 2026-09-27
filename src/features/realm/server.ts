@@ -33,19 +33,3 @@ export const getRealm = cache(async (): Promise<Realm> => {
   return { ...picked, ownChannel: ownChannel?.toLowerCase() ?? null };
 });
 
-/** Channels running the game (public Twitch logins), for the realm picker. */
-export const listRealms = cache(async (): Promise<string[]> => {
-  try {
-    const { createPublicClient } = await import("@/lib/supabase/public");
-    const client = createPublicClient();
-    // fe_list_realms is newer than the generated Database types.
-    const rpc = (client.rpc as unknown as (fn: string) => PromiseLike<{ data: unknown; error: unknown }>).bind(client);
-    const { data, error } = await rpc("fe_list_realms");
-    if (error || !Array.isArray(data)) return [];
-    return data
-      .map((row) => (typeof row === "object" && row !== null ? (row as { channel?: unknown }).channel : null))
-      .filter((c): c is string => typeof c === "string" && c.length > 0);
-  } catch {
-    return [];
-  }
-});

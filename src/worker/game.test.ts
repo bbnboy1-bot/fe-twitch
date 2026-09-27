@@ -68,6 +68,7 @@ function createStore(overrides: StoreOverrides = {}) {
       arenas.push(arena);
     },
     getChannelNames: async () => ({ mode: "original", custom: {} }),
+    getGameTiming: async () => ({ bossMinMinutes: 30, bossMaxMinutes: 45, creaturesEnabled: false, creatureMinMinutes: 5, creatureMaxMinutes: 10 }),
     getChampionChoice: async () => null,
     setChampion: async () => true,
     chooseLord: async () => ({ previous: null, first: true, same: false }),
@@ -236,6 +237,55 @@ describe("PokemonGame encounters", () => {
     expect(state.kind).toBe("lull");
     await clock.advance(ENCOUNTER.lullMs + 1);
     expect(messages.at(-1)?.message).toContain("takes the field");
+  });
+
+  const creatureTiming = async () => ({ bossMinMinutes: 30, bossMaxMinutes: 45, creaturesEnabled: true, creatureMinMinutes: 5, creatureMaxMinutes: 5 });
+
+  it("swaps an untouched foe for a wandering creature that pays gold but never joins the army", async () => {
+    const { game, client, messages, gold, clock, spawns, arenas } = createGame({ store: { getGameTiming: creatureTiming } });
+    await game.initialize("streamer");
+    await clock.advance(5 * 60_000 + 1);
+    expect(messages.at(-1)?.message).toContain("A wild Cave Spider skitters out of the dark! Bram slips away. 36 HP");
+    expect(spawns.at(-1)).toEqual({ poke: "creature-spider", maxHealth: 36, kind: "foe" });
+    for (let i = 0; i < 4; i++) await game.handle("attack", client, "streamer", viewer);
+    expect(messages.at(-1)?.message).toContain("@viewer slays the Cave Spider! Spoils: @viewer +42g");
+    expect(gold.get("viewer")).toBe(4 + 32 + ENCOUNTER.creatureFinisherGold);
+    expect(arenas.at(-1)!.events.at(-1)).toMatchObject({ type: "recruit", enemy: "creature-spider", slain: true });
+  });
+
+  it("waits for the current fight to finish before a creature arrives", async () => {
+    const { game, client, messages, clock } = createGame({ store: { getGameTiming: creatureTiming } });
+    await game.initialize("streamer");
+    await game.handle("attack", client, "streamer", viewer);
+    await clock.advance(5 * 60_000 + 1);
+    expect(messages.some((m) => m.message.includes("A wild"))).toBe(false);
+    for (let i = 0; i < 5; i++) await game.handle("attack", client, "streamer", viewer);
+    expect(messages.at(-1)?.message).toContain("recruited Bram");
+    await clock.advance(ENCOUNTER.lullMs + 1);
+    expect(messages.at(-1)?.message).toContain("A wild Cave Spider");
+  });
+
+  it("lets a creature wander off with no payout, then the next foe comes", async () => {
+    const { game, messages, clock, state } = createGame({ store: { getGameTiming: creatureTiming } });
+    await game.initialize("streamer");
+    await clock.advance(5 * 60_000 + 1);
+    await clock.advance(ENCOUNTER.creatureDurationMs + 1);
+    expect(messages.some((m) => m.message.includes("The Cave Spider wanders off with 36/36 HP left."))).toBe(true);
+    expect(state.kind).toBe("lull");
+    await clock.advance(ENCOUNTER.lullMs + 1);
+    expect(messages.at(-1)?.message).toContain("takes the field");
+  });
+
+  it("follows the streamer's boss timing and keeps creatures off when disabled", async () => {
+    const { game, messages, clock } = createGame({
+      store: { getGameTiming: async () => ({ bossMinMinutes: 10, bossMaxMinutes: 10, creaturesEnabled: false, creatureMinMinutes: 5, creatureMaxMinutes: 5 }) },
+    });
+    await game.initialize("streamer");
+    await clock.advance(9 * 60_000);
+    expect(messages.some((m) => m.message.includes("💀 BOSS"))).toBe(false);
+    await clock.advance(60_000 + 1);
+    expect(messages.some((m) => m.message.includes("💀 BOSS"))).toBe(true);
+    expect(messages.some((m) => m.message.includes("A wild"))).toBe(false);
   });
 
   it("spawns a boss on the boss clock", async () => {

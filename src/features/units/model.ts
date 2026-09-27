@@ -16,7 +16,7 @@ export type UnitClass =
   | "arcanist" // tome
   | "mender"; // staff support
 
-export type Rarity = "common" | "uncommon" | "rare" | "legendary" | "lord";
+export type Rarity = "common" | "uncommon" | "rare" | "legendary" | "lord" | "creature";
 
 export type Stats = {
   hp: number;

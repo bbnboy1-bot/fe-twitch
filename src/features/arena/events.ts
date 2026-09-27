@@ -40,7 +40,7 @@ export type ArenaEvent =
   | { id: number; at: string; type: "rout"; player: string; unitId: string | null; damage: number; enemy: string }
   | { id: number; at: string; type: "raid"; player: string; unitId: string | null; damage: number; crit: boolean; miss: boolean; routed: boolean }
   | { id: number; at: string; type: "heal"; player: string; unitId: string | null; hp: number }
-  | { id: number; at: string; type: "recruit"; player: string; unitId: string | null; enemy: string; boss: boolean }
+  | { id: number; at: string; type: "recruit"; player: string; unitId: string | null; enemy: string; boss: boolean; slain?: boolean }
   | { id: number; at: string; type: "escape"; enemy: string }
   | { id: number; at: string; type: "duel"; a: DuelSide; b: DuelSide; strikes: DuelStrike[]; winner: string };
 
@@ -123,7 +123,7 @@ function parseEvent(value: unknown): ArenaEvent | null {
     case "heal":
       return { ...base, type: "heal", player: str(value.player), unitId, hp: num(value.hp) };
     case "recruit":
-      return { ...base, type: "recruit", player: str(value.player), unitId, enemy: str(value.enemy), boss: value.boss === true };
+      return { ...base, type: "recruit", player: str(value.player), unitId, enemy: str(value.enemy), boss: value.boss === true, slain: value.slain === true };
     case "escape":
       return { ...base, type: "escape", enemy: str(value.enemy) };
     case "duel": {

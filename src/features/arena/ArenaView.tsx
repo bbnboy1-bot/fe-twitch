@@ -382,7 +382,9 @@ export function ArenaView({
           showBanner(
             ev.boss
               ? `${ev.player} slays ${enemy ? `${enemyName} ${enemy.epithet}` : ev.enemy}`
-              : `${ev.player} recruits ${enemyName}`,
+              : ev.slain
+                ? `${ev.player} slays the ${enemyName}`
+                : `${ev.player} recruits ${enemyName}`,
             ev.boss ? "boss" : "recruit",
           );
           onRecruit?.(ev.player);

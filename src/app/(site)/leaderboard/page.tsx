@@ -59,7 +59,7 @@ export default async function LeaderboardPage({
             </>
           ) : (
             <>
-              Choose a streamer&apos;s realm from the picker at the top of the page to see their standings in {GAME_NAME}.
+              Open this page from a streamer&apos;s link (the bot&apos;s links in chat include it) to see their standings in {GAME_NAME}.
             </>
           )}
         </p>

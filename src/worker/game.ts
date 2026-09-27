@@ -6,6 +6,7 @@ import { EncounterDirector, type Scheduler } from "@/features/encounters/directo
 import { EncounterManager, type Fighter } from "@/features/encounters/manager";
 import {
   ENCOUNTER,
+  splitCreatureGold,
   bossMaxHp,
   championMaxHp,
   enemyMaxHp,
@@ -17,13 +18,14 @@ import {
 import { DuelManager, pickChampion, resolveDuel } from "@/features/units/duel";
 import type { Unit } from "@/features/units/model";
 import { type ChannelNames, DEFAULT_CHANNEL_NAMES, lordDisplayNames, withChannelName } from "@/features/units/names";
-import { type Boss, findLord, getUnitById, LORDS, pickRandomBoss, recruitRandomUnit } from "@/features/units/roster";
+import { type Boss, type Creature, findLord, getUnitById, isCreatureId, LORDS, pickRandomBoss, pickRandomCreature, recruitRandomUnit } from "@/features/units/roster";
 
 function randomUnitId(): Promise<string> {
   return Promise.resolve(recruitRandomUnit().id);
 }
 
 
+import { DEFAULT_TIMING, type GameTiming } from "@/features/encounters/timing";
 import { withRealm } from "@/features/realm/realm";
 
 import type { PokeCommand } from "./commands";
@@ -102,6 +104,9 @@ export interface GameStore {
   logBattle(_channel: string, _line: string): Promise<void>;
   // eslint-disable-next-line no-unused-vars
   getChannelNames(_channel: string): Promise<ChannelNames>;
+  /** Phase 9: per-channel boss/creature timing. */
+  // eslint-disable-next-line no-unused-vars
+  getGameTiming(_channel: string): Promise<GameTiming>;
   // eslint-disable-next-line no-unused-vars
   getChampionChoice(_input: { channel: string; user: string }): Promise<string | null>;
   // eslint-disable-next-line no-unused-vars
@@ -130,6 +135,8 @@ type GameDependencies = {
   getRandomPokemon: () => Promise<string>;
   rollDamage: () => number;
   pickBoss?: () => Boss;
+  // eslint-disable-next-line no-unused-vars
+  pickCreature?: (_rng?: () => number) => Creature;
   rng?: () => number;
   now?: () => number;
   /** Timer factory; tests inject a manual one. `null` disables the clock entirely. */
@@ -161,6 +168,10 @@ export class PokemonGame {
   private arenaSeq = 0;
   /** Realm names per channel (Phase 7), refreshed in the background every minute. */
   private readonly namesCache = new Map<string, { names: ChannelNames; at: number }>();
+  /** Timing settings per channel (Phase 9), refreshed with the names. */
+  private readonly timingCache = new Map<string, { timing: GameTiming; at: number }>();
+  /** A creature showed up mid-fight: it takes the field after the current foe falls. */
+  private readonly pendingCreature = new Set<string>();
 
   constructor(
     store: GameStore,
@@ -177,6 +188,9 @@ export class PokemonGame {
       spawnBoss: (channel: string) => run(channel, () => this.spawnBoss(channel)),
       raid: (channel: string) => run(channel, () => this.raid(channel)),
       expireBoss: (channel: string) => run(channel, () => this.expireBoss(channel)),
+      spawnCreature: (channel: string) => run(channel, () => this.spawnCreature(channel)),
+      expireCreature: (channel: string) => run(channel, () => this.expireCreature(channel)),
+      timing: (channel: string) => this.timing(channel),
     };
     this.director =
       this.dependencies.scheduler === null
@@ -213,6 +227,23 @@ export class PokemonGame {
         .catch((error) => console.error("Channel names lookup failed:", error));
     }
     return hit?.names ?? DEFAULT_CHANNEL_NAMES;
+  }
+
+  /** Cached timing for a channel; refreshes in the background and re-arms the clocks if it changed. */
+  private timing(channel: string): GameTiming {
+    const hit = this.timingCache.get(channel);
+    if (!hit || this.now() - hit.at > 60_000) {
+      this.timingCache.set(channel, { timing: hit?.timing ?? DEFAULT_TIMING, at: this.now() });
+      void this.store
+        .getGameTiming(channel)
+        .then((timing) => {
+          const before = this.timingCache.get(channel)?.timing;
+          this.timingCache.set(channel, { timing, at: this.now() });
+          if (before && JSON.stringify(before) !== JSON.stringify(timing)) this.director?.retime(channel);
+        })
+        .catch((error) => console.error("Channel timing lookup failed:", error));
+    }
+    return hit?.timing ?? DEFAULT_TIMING;
   }
 
   /** A unit carrying this channel's display name (any unit may be renamed per realm). */
@@ -265,6 +296,11 @@ export class PokemonGame {
     } catch (error) {
       console.error("Channel names lookup failed:", error);
     }
+    try {
+      this.timingCache.set(channel, { timing: await this.store.getGameTiming(channel), at: this.now() });
+    } catch (error) {
+      console.error("Channel timing lookup failed:", error);
+    }
     this.director?.start(channel);
     await this.spawnFoe(channel);
   }
@@ -279,6 +315,7 @@ export class PokemonGame {
 
   async spawnFoe(channel: string) {
     if (this.field.current(channel)) return; // something already on the field
+    if (this.pendingCreature.delete(channel)) return this.spawnCreature(channel);
     const unit = withChannelName(getUnitById(await this.dependencies.getRandomPokemon()) ?? recruitRandomUnit(), this.names(channel));
     const maxHp = enemyMaxHp(unit);
     this.field.spawn(channel, "foe", unit, maxHp, this.now(), null);
@@ -311,6 +348,51 @@ export class PokemonGame {
       channel,
       `💀 BOSS: ${boss.name} ${boss.epithet} ${boss.arrival}!${driven} ${maxHp} HP, ${minutes} minutes. Everyone !fe fight - gold is split by damage, and whoever lands the final blow recruits them!`,
     );
+  }
+
+  /**
+   * Creature clock fired. Field quiet: it arrives now. A foe nobody has
+   * touched: the creature takes its place. A fight in progress or a boss:
+   * it waits and arrives when the field next clears.
+   */
+  async spawnCreature(channel: string) {
+    const current = this.field.current(channel);
+    if (current && (current.kind !== "foe" || current.fighters.size > 0)) {
+      this.pendingCreature.add(channel);
+      return;
+    }
+    this.pendingCreature.delete(channel);
+    const creature = withChannelName((this.dependencies.pickCreature ?? pickRandomCreature)(this.dependencies.rng), this.names(channel));
+    const maxHp = enemyMaxHp(creature);
+    const driven = current ? ` ${current.unit.name} slips away.` : "";
+    this.field.spawn(channel, "creature", creature, maxHp, this.now(), ENCOUNTER.creatureDurationMs);
+    await this.store.spawnEncounter({
+      channel,
+      poke: creature.id,
+      maxHealth: maxHp,
+      kind: "foe",
+      durationSeconds: Math.round(ENCOUNTER.creatureDurationMs / 1000),
+    });
+    this.director?.enemySpawned(channel, "creature");
+    await this.log(channel, `A ${creature.name} ${creature.arrival}`);
+    await this.emit(channel, { type: "spawn", enemy: creature.id, kind: "foe", maxHp });
+    const minutes = Math.round(ENCOUNTER.creatureDurationMs / 60_000);
+    await this.say(
+      channel,
+      `🐾 A wild ${creature.name} ${creature.arrival}!${driven} ${maxHp} HP, ${minutes} minutes before it wanders off. !fe fight to split ${creature.goldPool}g by damage.`,
+    );
+  }
+
+  /** Nobody finished the creature in time: it leaves, no payout. */
+  async expireCreature(channel: string) {
+    const e = this.field.current(channel);
+    if (!e || e.kind !== "creature") return;
+    this.field.end(channel);
+    await this.store.endEncounter(channel);
+    await this.log(channel, `${e.unit.name} wanders off`);
+    await this.emit(channel, { type: "escape", enemy: e.unit.id });
+    await this.say(channel, `The ${e.unit.name} wanders off with ${e.hp}/${e.maxHp} HP left.`);
+    this.director?.fieldCleared(channel);
   }
 
   /** The enemy picks on someone who has been fighting it. Lurkers are safe. */
@@ -625,6 +707,17 @@ export class PokemonGame {
     const finisher = this.field.getFighter(channel, player.username);
     const e = this.field.end(channel);
     if (!e) return;
+    if (e.kind === "creature" || isCreatureId(e.unit.id)) {
+      const pool = "goldPool" in e.unit ? (e.unit as Creature).goldPool : 25;
+      const payouts = splitCreatureGold(pool, e.contributions, player.username);
+      await Promise.all(payouts.map((p) => this.store.earnGold({ channel, user: p.user, amount: p.gold })));
+      const top = payouts.slice(0, 3).map((p) => `@${p.user} +${p.gold}g`).join(", ");
+      await this.log(channel, `${player.username} slays the ${e.unit.name}`);
+      await this.emit(channel, { type: "recruit", player: player.username, unitId: finisher?.unitId ?? null, enemy: e.unit.id, boss: false, slain: true });
+      await client.say(channel, `🐾 @${player.username} slays the ${e.unit.name}! Spoils: ${top}${payouts.length > 3 ? "…" : ""}`);
+      this.director?.fieldCleared(channel);
+      return;
+    }
     await this.store.earnGold({ channel, user: player.username, amount: GOLD.recruit });
     if (e.kind === "boss") {
       const payouts = splitBossGold(e.unit.rarity === "legendary" && "goldPool" in e.unit ? (e.unit as Boss).goldPool : 200, e.contributions, player.username);

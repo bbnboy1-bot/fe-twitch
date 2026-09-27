@@ -1,9 +1,11 @@
 import { ArenaSourceCard } from "@/components/ArenaSourceCard";
+import { GameTimingCard } from "@/components/GameTimingCard";
 import { RealmNamesCard } from "@/components/RealmNamesCard";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { StreamerSetup } from "@/components/StreamerSetup";
 import { getAppOrigin } from "@/features/auth/origin";
 import { getCurrentAccount } from "@/features/auth/queries";
+import { getGameTiming } from "@/features/encounters/timing-server";
 import { getChannelNames } from "@/features/units/channel-names";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +26,7 @@ export default async function SetupPage() {
   }
 
   const url = `${getAppOrigin()}/overlays/${account.id}`;
-  const names = await getChannelNames(account.channel);
+  const [names, timing] = await Promise.all([getChannelNames(account.channel), getGameTiming(account.channel)]);
 
   return (
     <section className="container grid max-w-5xl gap-7 py-10 tablet:py-14">
@@ -43,12 +45,18 @@ export default async function SetupPage() {
           lords and leaderboard. Links the bot posts in chat already include it:{" "}
           <code className="select-all break-all text-primary">{`${getAppOrigin()}/?realm=${account.channel.toLowerCase()}`}</code>
         </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Browsing another streamer&apos;s realm? <a href="/setup?realm=mine" className="text-primary underline">Switch back to yours</a>.
+        </p>
       </div>
       <div className="game-panel p-5 tablet:p-7">
         <StreamerSetup accountId={account.id} url={url} />
       </div>
       <div className="game-panel p-5 tablet:p-7">
         <ArenaSourceCard url={`${url}/arena`} />
+      </div>
+      <div className="game-panel p-5 tablet:p-7">
+        <GameTimingCard initial={timing} />
       </div>
       <div className="game-panel p-5 tablet:p-7">
         <RealmNamesCard initial={names} />

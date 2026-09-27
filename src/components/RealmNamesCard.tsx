@@ -8,7 +8,7 @@ import { type RealmNamesState, saveRealmNamesAction } from "@/features/units/act
 import { type ChannelNames, NAME_DISCLAIMER, OFFICIAL_NAMES, type UnitNameMode } from "@/features/units/names";
 import { UnitPortrait } from "@/features/units/presentation";
 import type { Unit } from "@/features/units/model";
-import { BOSSES, LORDS, ROSTER } from "@/features/units/roster";
+import { BOSSES, CREATURES, LORDS, ROSTER } from "@/features/units/roster";
 
 const INITIAL: RealmNamesState = { status: "idle" };
 
@@ -23,7 +23,7 @@ export function RealmNamesCard({ initial }: { initial: ChannelNames }) {
         <h2 className="font-heading text-xl font-bold">Realm names</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Choose how units are named in your chat, overlays and on this site: the 14 lords, the 6 warlords and the
-          22 field recruits. Viewers pick a lord with <code>!fe start &lt;name&gt;</code>. You can also type your own
+          22 field recruits and 16 wandering creatures. Viewers pick a lord with <code>!fe start &lt;name&gt;</code>. You can also type your own
           name for any unit.
         </p>
       </div>
@@ -54,6 +54,7 @@ export function RealmNamesCard({ initial }: { initial: ChannelNames }) {
           ["Lords", LORDS, true],
           ["Warlords (bosses)", BOSSES, false],
           ["Field recruits", ROSTER, false],
+          ["Wandering creatures", CREATURES, false],
         ] as const
       ).map(([title, units, open]) => (
         <details key={title} open={open} className="rounded-lg border border-border">

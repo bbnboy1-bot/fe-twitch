@@ -94,7 +94,7 @@ export function resolveDuel(a: Fighter, b: Fighter, rng: Rng = Math.random): Due
 
 /** Pick a collector's champion: best rarity, then stat total. */
 export function pickChampion(units: Unit[]): Unit | null {
-  const rank = { common: 0, uncommon: 1, rare: 2, lord: 3, legendary: 4 };
+  const rank = { creature: -1, common: 0, uncommon: 1, rare: 2, lord: 3, legendary: 4 };
   const total = (s: Stats) => s.hp + s.atk + s.spd + s.def + s.skl + s.lck;
   return (
     [...units].sort(

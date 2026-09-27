@@ -45,7 +45,12 @@ export type Database = {
         updated_at: string;
       }>;
       channel_settings: Table<{
+        boss_max_minutes: number;
+        boss_min_minutes: number;
         channel: string;
+        creature_max_minutes: number;
+        creature_min_minutes: number;
+        creatures_enabled: boolean;
         unit_name_mode: string;
         unit_names: unknown;
         updated_at: string;

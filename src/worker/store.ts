@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { ArenaState } from "@/features/arena/events";
+import { type GameTiming, timingFromRow } from "@/features/encounters/timing";
 import { type ChannelNames, parseChannelNames } from "@/features/units/names";
 
 import type {
@@ -42,6 +43,16 @@ export class SupabaseGameStore implements GameStore {
       .maybeSingle();
     if (error) throw error;
     return parseChannelNames(data ? { mode: data.unit_name_mode, custom: data.unit_names } : null);
+  }
+
+  async getGameTiming(channel: string): Promise<GameTiming> {
+    const { data, error } = await this.client
+      .from("channel_settings")
+      .select("boss_min_minutes,boss_max_minutes,creatures_enabled,creature_min_minutes,creature_max_minutes")
+      .eq("channel", channel)
+      .maybeSingle();
+    if (error) throw error;
+    return timingFromRow(data as Record<string, unknown> | null);
   }
 
   async getChampionChoice(input: { channel: string; user: string }): Promise<string | null> {

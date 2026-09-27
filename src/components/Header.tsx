@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { getCurrentAccount } from "@/features/auth/queries";
 import { GAME_NAME } from "@/config/brand";
 import { Crest } from "./Crest";
-import { RealmPicker } from "./RealmPicker";
 import UserDropdown from "./UserDropdown";
 
 const menuItems = [
@@ -34,7 +33,6 @@ export default async function Header() {
               {item.name}
             </Link>
           ))}
-          <RealmPicker />
           <div className="ml-2 pl-2 border-l border-border flex items-center">
             <HeaderAccount channel={account?.channel ?? null} />
           </div>
@@ -49,7 +47,6 @@ export default async function Header() {
           <div className="game-panel absolute right-0 top-12 w-72 p-3">
             <div className="mb-3 border-b border-border pb-3">
               <HeaderAccount channel={account?.channel ?? null} mobile />
-              <RealmPicker mobile />
             </div>
             <nav className="flex flex-col gap-2">
               {menuItems.map((item) => (

@@ -10,7 +10,7 @@ import {
   WEAPON_LABEL,
 } from "@/features/units/presentation";
 import { unitDisplayName } from "@/features/units/names";
-import { BOSSES, LORDS, ROSTER } from "@/features/units/roster";
+import { BOSSES, CREATURES, LORDS, ROSTER } from "@/features/units/roster";
 import { getSiteChannelNames } from "@/features/units/site-names";
 
 export const metadata: Metadata = {
@@ -126,6 +126,32 @@ export default async function UnitsPage() {
                   <span className="mt-1 block text-xs text-muted-foreground">
                     {CLASS_META[unit.unitClass].label} · {unit.maxHp} field HP
                   </span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div>
+        <div className="mb-3 flex items-baseline gap-3">
+          <h2 className="font-heading text-xl font-bold" style={{ color: RARITY_META.creature.color }}>
+            Wandering creatures
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            drop in between fights if the streamer enables them - slain for gold, never recruited
+          </span>
+        </div>
+        <ul className="grid grid-cols-2 gap-3 tablet:grid-cols-3 laptop:grid-cols-4">
+          {CREATURES.map((unit) => (
+            <li key={unit.id}>
+              <Link
+                href={`/units/${unit.id}`}
+                className="game-panel flex items-center gap-3 p-3 transition hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <UnitPortrait unit={unit} size={56} />
+                <span className="min-w-0">
+                  <span className="block truncate font-heading font-bold">{unitDisplayName(unit, names)}</span>
+                  <span className="block truncate text-xs italic text-muted-foreground">{unit.epithet}{unitDisplayName(unit, names) !== unit.name ? ` (${unit.name})` : ""}</span>
                 </span>
               </Link>
             </li>

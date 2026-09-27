@@ -41,7 +41,7 @@ export type OverlaySnapshot = {
   lastCatchAt?: string | null;
 };
 export type OverlayEvent = {
-  kind: "hit" | "caught" | "spawn" | "fled" | null;
+  kind: "hit" | "caught" | "slain" | "spawn" | "fled" | null;
   player: string | null;
   damage: number | null;
   at: string | null;
@@ -118,7 +118,7 @@ export function applyOverlaySnapshot(
 
   const k = snapshot.lastEventKind;
   const event: OverlayEvent = {
-    kind: k === "hit" || k === "caught" || k === "spawn" || k === "fled" ? k : null,
+    kind: k === "hit" || k === "caught" || k === "slain" || k === "spawn" || k === "fled" ? k : null,
     player: snapshot.lastEventPlayer ?? null,
     damage: snapshot.lastEventDamage ?? null,
     at: snapshot.lastEventAt ?? null,

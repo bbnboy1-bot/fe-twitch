@@ -61,7 +61,14 @@ export const COMMANDS: CommandDoc[] = [
     cmd: "!fe boss",
     alias: "mods and the streamer",
     note: "Summon a warlord now instead of waiting for the timer.",
-    detail: "A warlord arrives on its own every 30 to 45 minutes with a 5 minute timer and hundreds of HP. Beat it: the gold pool (200 to 320) is split by damage dealt (minimum 5), the finisher gets +40 and recruits the warlord. Timer runs out: it escapes and everyone who hit it gets 10 gold. Raids: every minute or two the enemy attacks a random viewer who has been fighting it. Lurkers are never targeted.",
+    detail: "A warlord arrives on its own on the streamer's timer (30 to 45 minutes unless they change it) with a 5 minute timer and hundreds of HP. Beat it: the gold pool (200 to 320) is split by damage dealt (minimum 5), the finisher gets +40 and recruits the warlord. Timer runs out: it escapes and everyone who hit it gets 10 gold. Raids: every minute or two the enemy attacks a random viewer who has been fighting it. Lurkers are never targeted.",
+  },
+  {
+    group: "battle",
+    cmd: "(creatures)",
+    alias: "no command - they just appear",
+    note: "Wandering creatures drop in every few minutes if the streamer enables them. Hit them with !fe fight.",
+    detail: "Bandits, pirates, skeletons, beasts and the like. They are smaller than regular foes and can't be recruited. Kill one and its gold pool (roughly 20 to 35) is split by damage, with +10 for the final blow. They wander off after 2 minutes if nobody finishes them, and they never interrupt a fight already under way.",
   },
   { group: "economy", cmd: "!fe gold", alias: "!fe g", note: "Your gold balance." },
   {

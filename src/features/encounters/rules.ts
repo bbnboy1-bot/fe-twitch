@@ -21,6 +21,10 @@ export const ENCOUNTER = {
   bossMinMs: 30 * 60_000,
   bossMaxMs: 45 * 60_000,
   bossDurationMs: 5 * 60_000,
+  /** Wandering creatures: how long chat has before one wanders off, and the finisher's bonus. */
+  creatureDurationMs: 2 * 60_000,
+  creatureFinisherGold: 10,
+  creatureMinShare: 2,
   /** Gold paid on top of the boss pool to whoever lands the killing blow. */
   bossFinisherGold: 40,
   /** Consolation gold per contributor if a boss escapes. */
@@ -28,10 +32,10 @@ export const ENCOUNTER = {
   /** Minimum share any boss contributor receives. */
   bossMinShare: 5,
   /** Field HP multiplier per rarity for regular foes (unit base.hp * mult). */
-  hpMultiplier: { common: 2, uncommon: 2.5, rare: 3, legendary: 4, lord: 3.5 } as const,
+  hpMultiplier: { common: 2, uncommon: 2.5, rare: 3, legendary: 4, lord: 3.5, creature: 1.5 } as const,
 };
 
-export type EncounterKind = "foe" | "boss";
+export type EncounterKind = "foe" | "boss" | "creature";
 
 /** Regular foes scale with their own stats so a legendary is a real fight. */
 export function enemyMaxHp(unit: Unit): number {
@@ -111,6 +115,19 @@ export function splitBossGold(
     const share = total > 0 ? Math.round((dealt / total) * pool) : 0;
     let gold = Math.max(ENCOUNTER.bossMinShare, share);
     if (user === finisher) gold += ENCOUNTER.bossFinisherGold;
+    out.push({ user, gold });
+  }
+  return out.sort((a, b) => b.gold - a.gold);
+}
+
+/** Creature pool split by damage, small minimum, finisher bonus. */
+export function splitCreatureGold(pool: number, contributions: Map<string, number>, finisher: string | null): Payout[] {
+  const total = [...contributions.values()].reduce((a, b) => a + b, 0);
+  const out: Payout[] = [];
+  for (const [user, dealt] of contributions) {
+    const share = total > 0 ? Math.round((dealt / total) * pool) : 0;
+    let gold = Math.max(ENCOUNTER.creatureMinShare, share);
+    if (user === finisher) gold += ENCOUNTER.creatureFinisherGold;
     out.push({ user, gold });
   }
   return out.sort((a, b) => b.gold - a.gold);

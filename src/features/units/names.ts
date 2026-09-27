@@ -1,5 +1,5 @@
 import type { Unit } from "./model";
-import { BOSSES, getUnitById, LORDS, ROSTER } from "./roster";
+import { BOSSES, CREATURES, getUnitById, LORDS, ROSTER } from "./roster";
 
 /**
  * Realm names (Phase 7).
@@ -74,13 +74,30 @@ export const OFFICIAL_NAMES: Record<string, string> = {
   caelen: "Marth",
   morrigan: "Lilina",
   brannoc: "Hawkeye",
+  // Wandering creatures (generic enemy classes)
+  "creature-bandit": "Brigand",
+  "creature-reaver": "Pirate",
+  "creature-pikeman": "Soldier",
+  "creature-hatchet": "Fighter",
+  "creature-sellblade": "Mercenary",
+  "creature-bowman": "Archer",
+  "creature-hexer": "Shaman",
+  "creature-ghoul": "Revenant",
+  "creature-bones": "Bonewalker",
+  "creature-gazer": "Mogall",
+  "creature-stonewing": "Gargoyle",
+  "creature-hound": "Mauthe Doog",
+  "creature-giant": "Cyclops",
+  "creature-centaur": "Tarvos",
+  "creature-wight": "Wight",
+  "creature-spider": "Bael",
 };
 
 /** @deprecated use OFFICIAL_NAMES; kept for callers that only care about lords. */
 export const OFFICIAL_LORD_NAMES: Record<string, string> = Object.fromEntries(LORDS.map((l) => [l.id, OFFICIAL_NAMES[l.id] ?? l.name]));
 
 /** Every renamable unit, in the order the setup page shows them. */
-export const NAMEABLE_UNITS: Unit[] = [...LORDS, ...BOSSES, ...ROSTER];
+export const NAMEABLE_UNITS: Unit[] = [...LORDS, ...BOSSES, ...ROSTER, ...CREATURES];
 
 const MAX_NAME_LENGTH = 24;
 

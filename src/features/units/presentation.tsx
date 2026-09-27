@@ -31,6 +31,7 @@ export const RARITY_META: Record<
   rare: { label: "Rare", color: "oklch(0.72 0.15 250)", odds: "7%" },
   legendary: { label: "Legendary", color: "oklch(0.83 0.14 82)", odds: "1%" },
   lord: { label: "Lord", color: "oklch(0.8 0.12 60)", odds: "!fe start" },
+  creature: { label: "Creature", color: "oklch(0.65 0.08 140)", odds: "wandering" },
 };
 
 export const WEAPON_LABEL: Record<WeaponType, string> = {

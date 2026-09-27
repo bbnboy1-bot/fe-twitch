@@ -34,7 +34,8 @@ export default async function CommandsPage() {
           <li>Each hit is announced only on the overlay (crits shout in chat) and pays 1 gold.</li>
           <li>The foe hits your champion back. At 0 HP your champion is routed until the next foe or a !fe heal.</li>
           <li>Whoever lands the final blow recruits the foe and gets 25 gold. The field rests for 45 seconds.</li>
-          <li>Every 30 to 45 minutes a warlord arrives: big HP, 5 minute timer, gold pool split by damage.</li>
+          <li>Every so often a warlord arrives (the streamer sets how often): big HP, 5 minute timer, gold pool split by damage.</li>
+          <li>Wandering creatures may drop in between fights: quick gold, but they can&apos;t be recruited.</li>
         </ol>
         <p className="mt-3 text-muted-foreground">
           Weapon triangle: <strong>sword beats axe, axe beats lance, lance beats sword</strong>. Bows and tomes sit

@@ -42,6 +42,7 @@ const RARITY_WEIGHT: Record<Rarity, number> = {
   rare: 70,
   legendary: 10,
   lord: 0, // never in the random pool
+  creature: 0, // creatures only arrive on their own timer
 };
 
 /**
@@ -66,6 +67,46 @@ export const LORDS: Unit[] = [
   u("lord-faelan", "Faelan", "the Golden Schemer", "ranger", "lord", 25, 11, 13, 6, 15, 13),
   u("lord-amaris", "Amaris", "Blade of the Divine", "duelist", "lord", 28, 12, 12, 9, 12, 12),
 ];
+
+/**
+ * Wandering creatures (Phase 9): small generic enemies that turn up every few
+ * minutes when the streamer enables them. They are never recruited; killing
+ * one pays a small gold pool split by damage. Ids are `creature-*` (the attack
+ * RPC skips the army insert for these). Original names here; the community
+ * name preset in `names.ts` maps them to the familiar generic enemy classes.
+ */
+export type Creature = Unit & { goldPool: number; arrival: string };
+
+function c(unit: Unit, goldPool: number, arrival: string): Creature {
+  return { ...unit, goldPool, arrival };
+}
+
+export const CREATURES: Creature[] = [
+  c(u("creature-bandit", "Hill Bandit", "of the Pass", "berserker", "creature", 20, 7, 4, 3, 2, 1), 24, "comes down from the hills"),
+  c(u("creature-reaver", "Reaver", "of the Grey Coast", "berserker", "creature", 21, 7, 5, 3, 3, 1), 26, "rows ashore looking for loot"),
+  c(u("creature-pikeman", "Pikeman", "of the Levy", "sentinel", "creature", 19, 6, 3, 6, 3, 1), 22, "marches in with a rusty pike"),
+  c(u("creature-hatchet", "Hatchetman", "the Brawler", "berserker", "creature", 22, 8, 4, 2, 2, 1), 24, "picks a fight with anyone"),
+  c(u("creature-sellblade", "Sellblade", "the Hireling", "duelist", "creature", 18, 6, 7, 3, 5, 2), 28, "wants paying for something"),
+  c(u("creature-bowman", "Bowman", "of the Hedge", "ranger", "creature", 16, 6, 5, 2, 5, 1), 24, "looses arrows from the hedgerow"),
+  c(u("creature-hexer", "Hexer", "of the Fen", "arcanist", "creature", 15, 7, 4, 1, 4, 2), 28, "mutters curses from the fog"),
+  c(u("creature-ghoul", "Grave Ghoul", "the Restless", "berserker", "creature", 24, 6, 2, 3, 1, 0), 26, "claws its way out of the soil"),
+  c(u("creature-bones", "Bone Soldier", "of the Old War", "duelist", "creature", 18, 6, 4, 4, 3, 0), 26, "rattles in from the barrow"),
+  c(u("creature-gazer", "Gazer", "the Floating Eye", "arcanist", "creature", 16, 7, 5, 2, 5, 0), 30, "drifts in on the night air"),
+  c(u("creature-stonewing", "Stonewing", "of the Ruins", "skyrider", "creature", 20, 7, 6, 5, 3, 0), 30, "swoops down from a broken tower"),
+  c(u("creature-hound", "Hellhound", "of the Ash", "duelist", "creature", 17, 7, 8, 2, 4, 0), 28, "bounds out of the smoke"),
+  c(u("creature-giant", "Hill Giant", "the Stomper", "berserker", "creature", 30, 9, 2, 5, 1, 0), 36, "shakes the ruins as it arrives"),
+  c(u("creature-centaur", "Horse Lord", "of the Plains", "outrider", "creature", 22, 7, 6, 4, 4, 0), 32, "charges in at full gallop"),
+  c(u("creature-wight", "Wight", "the Hollow Archer", "ranger", "creature", 18, 7, 5, 3, 5, 0), 30, "draws a bow of bone"),
+  c(u("creature-spider", "Cave Spider", "the Many-Eyed", "berserker", "creature", 24, 8, 3, 4, 2, 0), 32, "skitters out of the dark"),
+];
+
+export function pickRandomCreature(rng: () => number = Math.random): Creature {
+  return CREATURES[Math.floor(rng() * CREATURES.length)] ?? CREATURES[0];
+}
+
+export function isCreatureId(id: string): boolean {
+  return id.startsWith("creature-");
+}
 
 export function isLordId(id: string): boolean {
   return id.startsWith("lord-");
@@ -121,7 +162,12 @@ export function pickRandomBoss(rng: () => number = Math.random): Boss {
 }
 
 export function getUnitById(id: string): Unit | undefined {
-  return ROSTER.find((x) => x.id === id) ?? BOSSES.find((x) => x.id === id) ?? LORDS.find((x) => x.id === id);
+  return (
+    ROSTER.find((x) => x.id === id) ??
+    BOSSES.find((x) => x.id === id) ??
+    LORDS.find((x) => x.id === id) ??
+    CREATURES.find((x) => x.id === id)
+  );
 }
 
 function b(unit: Unit, maxHp: number, goldPool: number, arrival: string): Boss {
