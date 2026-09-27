@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { giftPokemonAction } from "@/features/transfers/actions";
+import { useChannelNames } from "@/features/units/names-context";
 import { getUnitFullTitle } from "@/features/units/presentation";
 import {
   initialTransferState,
@@ -29,6 +30,7 @@ export function GiftForm({
   owned: CollectionOption[];
   collectors: CollectorOption[];
 }) {
+  const names = useChannelNames();
   const [state, action, pending] = useActionState(
     giftPokemonAction,
     initialTransferState,
@@ -47,7 +49,7 @@ export function GiftForm({
               <SelectGroup>
                 {owned.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {getUnitFullTitle(item.poke)}
+                    {getUnitFullTitle(item.poke, names)}
                   </SelectItem>
                 ))}
               </SelectGroup>

@@ -23,11 +23,8 @@ function randomUnitId(): Promise<string> {
   return Promise.resolve(recruitRandomUnit().id);
 }
 
-function displayUnit(id: string): string {
-  const unit = getUnitById(id);
-  if (!unit) return id.charAt(0).toUpperCase() + id.slice(1);
-  return `${unit.name} ${unit.epithet} [${unit.rarity}]`;
-}
+
+import { withRealm } from "@/features/realm/realm";
 
 import type { PokeCommand } from "./commands";
 
@@ -218,10 +215,16 @@ export class PokemonGame {
     return hit?.names ?? DEFAULT_CHANNEL_NAMES;
   }
 
-  /** A unit carrying this channel's display name (lords may be renamed per realm). */
+  /** A unit carrying this channel's display name (any unit may be renamed per realm). */
   private unit(channel: string, id: string): Unit | undefined {
     const u = getUnitById(id);
     return u ? withChannelName(u, this.names(channel)) : undefined;
+  }
+
+  private displayUnit(channel: string, id: string): string {
+    const unit = this.unit(channel, id);
+    if (!unit) return id.charAt(0).toUpperCase() + id.slice(1);
+    return `${unit.name} ${unit.epithet} [${unit.rarity}]`;
   }
 
   /**
@@ -276,20 +279,20 @@ export class PokemonGame {
 
   async spawnFoe(channel: string) {
     if (this.field.current(channel)) return; // something already on the field
-    const unit = getUnitById(await this.dependencies.getRandomPokemon()) ?? recruitRandomUnit();
+    const unit = withChannelName(getUnitById(await this.dependencies.getRandomPokemon()) ?? recruitRandomUnit(), this.names(channel));
     const maxHp = enemyMaxHp(unit);
     this.field.spawn(channel, "foe", unit, maxHp, this.now(), null);
     await this.store.spawnEncounter({ channel, poke: unit.id, maxHealth: maxHp, kind: "foe", durationSeconds: null });
     this.director?.enemySpawned(channel, "foe");
     await this.log(channel, `${unit.name} takes the field`);
     await this.emit(channel, { type: "spawn", enemy: unit.id, kind: "foe", maxHp });
-    await this.say(channel, `⚠️ ${displayUnit(unit.id)} takes the field! ${maxHp} HP. Type !fe fight`);
+    await this.say(channel, `⚠️ ${this.displayUnit(channel, unit.id)} takes the field! ${maxHp} HP. Type !fe fight`);
   }
 
   async spawnBoss(channel: string) {
     const current = this.field.current(channel);
     if (current?.kind === "boss") return; // one boss at a time
-    const boss = (this.dependencies.pickBoss ?? pickRandomBoss)();
+    const boss = withChannelName((this.dependencies.pickBoss ?? pickRandomBoss)(), this.names(channel));
     const maxHp = bossMaxHp(boss);
     const driven = current ? ` ${current.unit.name} flees before them.` : "";
     this.field.spawn(channel, "boss", boss, maxHp, this.now(), ENCOUNTER.bossDurationMs);
@@ -376,7 +379,7 @@ export class PokemonGame {
     if (command === "help") {
       await client.say(
         channel,
-        "FE Duel: !fe start <lord> | fight | use <unit> | heal | duel @user | accept | gold | shop | buy <item> | army | status | last (mods: !fe boss)",
+        `FE Duel: !fe start <lord> | fight | use <unit> | heal | duel @user | accept | gold | shop | buy <item> | army | status | last (mods: !fe boss). Full guide: ${withRealm(new URL("/commands", this.appUrl), channel).toString()}`,
       );
       return;
     }
@@ -432,7 +435,7 @@ export class PokemonGame {
       await client.say(
         channel,
         caught
-          ? `Latest recruit: @${caught.username} recruited ${displayUnit(caught.poke)}.`
+          ? `Latest recruit: @${caught.username} recruited ${this.displayUnit(channel, caught.poke)}.`
           : "No recruits have joined in this channel yet.",
       );
       return;
@@ -475,7 +478,7 @@ export class PokemonGame {
 
     await client.say(
       channel,
-      `@${player.username} recruited ${displayUnit(result.poke ?? poke)} into their army!`,
+      `@${player.username} recruited ${this.displayUnit(channel, result.poke ?? poke)} into their army!`,
     );
   }
 
@@ -484,7 +487,7 @@ export class PokemonGame {
     channel: string,
     player: GamePlayer,
   ) {
-    const url = new URL("/collections", this.appUrl);
+    const url = withRealm(new URL("/collections", this.appUrl), channel);
     url.searchParams.set("mode", "user");
     url.searchParams.set("q", player.username);
     await client.say(
@@ -506,7 +509,7 @@ export class PokemonGame {
       : "";
     await client.say(
       channel,
-      `${e.kind === "boss" ? "💀 BOSS " : ""}${displayUnit(e.unit.id)} stands at ${e.hp}/${e.maxHp} HP.${left}${mine}`,
+      `${e.kind === "boss" ? "💀 BOSS " : ""}${this.displayUnit(channel, e.unit.id)} stands at ${e.hp}/${e.maxHp} HP.${left}${mine}`,
     );
   }
 
@@ -636,7 +639,7 @@ export class PokemonGame {
     } else {
       await this.log(channel, `${player.username} recruits ${e.unit.name}`);
       await this.emit(channel, { type: "recruit", player: player.username, unitId: finisher?.unitId ?? null, enemy: e.unit.id, boss: false });
-      await client.say(channel, `⚔️ @${player.username} bested and recruited ${displayUnit(e.unit.id)}! +${GOLD.recruit}g. The field is quiet...`);
+      await client.say(channel, `⚔️ @${player.username} bested and recruited ${this.displayUnit(channel, e.unit.id)}! +${GOLD.recruit}g. The field is quiet...`);
     }
     this.director?.fieldCleared(channel);
   }

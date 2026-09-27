@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createTradeAction } from "@/features/transfers/actions";
+import { useChannelNames } from "@/features/units/names-context";
 import { getUnitFullTitle } from "@/features/units/presentation";
 import {
   initialTransferState,
@@ -30,6 +31,7 @@ export function TradeForm({
   owned: CollectionOption[];
   collectors: CollectorOption[];
 }) {
+  const names = useChannelNames();
   const [collector, setCollector] = useState("");
   const [requested, setRequested] = useState<CollectionOption[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,7 +72,7 @@ export function TradeForm({
               <SelectGroup>
                 {owned.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {getUnitFullTitle(item.poke)}
+                    {getUnitFullTitle(item.poke, names)}
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -113,7 +115,7 @@ export function TradeForm({
               <SelectGroup>
                 {requested.map((item) => (
                   <SelectItem key={item.id} value={item.id}>
-                    {getUnitFullTitle(item.poke)}
+                    {getUnitFullTitle(item.poke, names)}
                   </SelectItem>
                 ))}
               </SelectGroup>

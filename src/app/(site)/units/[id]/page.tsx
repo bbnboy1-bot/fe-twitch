@@ -13,7 +13,9 @@ import {
   UnitPortrait,
   WEAPON_LABEL,
 } from "@/features/units/presentation";
+import { unitDisplayName } from "@/features/units/names";
 import { BOSSES, getUnitById, ROSTER } from "@/features/units/roster";
+import { getSiteChannelNames } from "@/features/units/site-names";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -44,6 +46,8 @@ export default async function UnitPage({ params }: PageProps) {
   const { id } = await params;
   const unit = getUnitById(id);
   if (!unit) notFound();
+  const names = await getSiteChannelNames();
+  const shownName = unitDisplayName(unit, names);
 
   const stats = [
     ["HP", unit.base.hp, 40],
@@ -81,8 +85,8 @@ export default async function UnitPage({ params }: PageProps) {
               </span>
             </div>
             <CardTitle className="mt-2 font-heading text-3xl font-bold">
-              {unit.name}{" "}
-              <span className="text-lg font-medium italic text-muted-foreground">{unit.epithet}</span>
+              {shownName}{" "}
+              <span className="text-lg font-medium italic text-muted-foreground">{unit.epithet}{shownName !== unit.name ? ` (${unit.name})` : ""}</span>
             </CardTitle>
             <p className="mt-2 text-sm text-muted-foreground">{classMeta.blurb}</p>
           </CardHeader>

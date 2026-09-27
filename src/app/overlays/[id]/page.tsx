@@ -6,6 +6,7 @@ import {
   getOverlayChannel,
 } from "@/features/overlay/queries";
 import { loadOverlay } from "@/features/overlay/loader";
+import { getChannelNames } from "@/features/units/channel-names";
 import { parseOverlaySize } from "@/features/overlay/model";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,7 @@ export default async function OverlayPage({
       channel={result.channel}
       debug={query.debug === "1"}
       initialPoke={result.initialPoke}
+      names={await getChannelNames(result.channel)}
       overlayId={id}
       size={parseOverlaySize(query.size)}
       hideCatch={query.hideCatch === "true" || query.hideCatch === "1"}

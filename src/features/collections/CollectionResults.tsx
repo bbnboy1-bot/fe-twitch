@@ -9,6 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useChannelNames } from "@/features/units/names-context";
 import {
   CLASS_META,
   formatRecruitDate,
@@ -38,6 +39,7 @@ export function CollectionResults({
 import { Calendar, Tv, User } from "lucide-react";
 
 function CollectionGrid({ rows }: { rows: CollectionRow[] }) {
+  const names = useChannelNames();
   return (
     <div className="grid grid-cols-1 gap-4 tablet:grid-cols-2 laptop:grid-cols-3 desktop:grid-cols-4">
       {rows.map((row) => (
@@ -48,7 +50,7 @@ function CollectionGrid({ rows }: { rows: CollectionRow[] }) {
           <CardContent className="flex h-28 items-center gap-4 p-3">
             <Link
               href={`/units/${encodeURIComponent(row.poke)}`}
-              aria-label={`View ${getUnitDisplayName(row.poke)} details`}
+              aria-label={`View ${getUnitDisplayName(row.poke, names)} details`}
               className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               <UnitPortraitById id={row.poke} size={76} />
@@ -60,7 +62,7 @@ function CollectionGrid({ rows }: { rows: CollectionRow[] }) {
                   href={`/units/${encodeURIComponent(row.poke)}`}
                   className="block truncate font-heading text-base font-bold text-foreground transition hover:text-primary"
                 >
-                  {getUnitDisplayName(row.poke)}
+                  {getUnitDisplayName(row.poke, names)}
                   {getUnitById(row.poke) ? (
                     <span className="ml-1.5 font-sans text-xs font-normal text-muted-foreground">
                       {CLASS_META[getUnitById(row.poke)!.unitClass].label}
@@ -111,6 +113,7 @@ function CollectionTable({
   rows: CollectionRow[];
   offset: number;
 }) {
+  const names = useChannelNames();
   return (
     <div className="overflow-x-auto rounded-xl border border-border">
       <Table>
@@ -137,7 +140,7 @@ function CollectionTable({
                   href={`/units/${encodeURIComponent(row.poke)}`}
                 >
                   <UnitPortraitById id={row.poke} size={36} />
-                  {getUnitDisplayName(row.poke)}
+                  {getUnitDisplayName(row.poke, names)}
                 </Link>
               </TableCell>
               <TableCell>

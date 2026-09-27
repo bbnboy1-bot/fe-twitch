@@ -1,4 +1,5 @@
 import type { Rarity, Unit, UnitClass, WeaponType } from "./model";
+import { type ChannelNames, unitDisplayName } from "./names";
 import { getUnitById } from "./roster";
 
 /**
@@ -42,15 +43,15 @@ export const WEAPON_LABEL: Record<WeaponType, string> = {
 };
 
 /** Human name for whatever is stored in `collections.poke` (a unit id). */
-export function getUnitDisplayName(id: string | null | undefined) {
+export function getUnitDisplayName(id: string | null | undefined, names?: ChannelNames) {
   if (!id) return "";
   const unit = getUnitById(id);
-  return unit ? unit.name : id.charAt(0).toUpperCase() + id.slice(1);
+  return unit ? unitDisplayName(unit, names) : id.charAt(0).toUpperCase() + id.slice(1);
 }
 
-export function getUnitFullTitle(id: string) {
+export function getUnitFullTitle(id: string, names?: ChannelNames) {
   const unit = getUnitById(id);
-  return unit ? `${unit.name} ${unit.epithet}` : getUnitDisplayName(id);
+  return unit ? `${unitDisplayName(unit, names)} ${unit.epithet}` : getUnitDisplayName(id, names);
 }
 
 export function formatRecruitDate(value: string, locale = "en-GB") {

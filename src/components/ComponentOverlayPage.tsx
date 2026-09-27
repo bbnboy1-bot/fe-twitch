@@ -1,6 +1,7 @@
 "use client";
 
 import { OverlayView } from "@/features/overlay/OverlayView";
+import type { ChannelNames } from "@/features/units/names";
 import type { ActivePoke, OverlaySize } from "@/features/overlay/model";
 import { useOverlayRealtime } from "@/features/overlay/use-overlay-realtime";
 
@@ -8,6 +9,7 @@ export default function ComponentOverlayPage({
   channel,
   debug,
   initialPoke,
+  names,
   overlayId,
   size,
   hideCatch,
@@ -21,6 +23,7 @@ export default function ComponentOverlayPage({
   channel: string;
   debug: boolean;
   initialPoke: ActivePoke | null;
+  names?: ChannelNames;
   overlayId: string;
   size: OverlaySize;
   hideCatch?: boolean;
@@ -44,6 +47,7 @@ export default function ComponentOverlayPage({
     <main className="overlay-viewport" data-testid="overlay" data-size={size}>
       {poke ? (
         <OverlayView
+          names={names}
           poke={poke}
           size={size}
           event={event}

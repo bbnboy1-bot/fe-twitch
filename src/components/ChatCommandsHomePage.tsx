@@ -1,19 +1,9 @@
 import { Zap } from "lucide-react";
+import Link from "next/link";
 
-const commands = [
-  { cmd: "!fe recruit", alias: "!fe r", note: "Join the game and get your first unit. Free, once per channel." },
-  { cmd: "!fe fight", alias: "!fe f", note: "Strike the foe on the field. It strikes back - land the final blow to recruit it." },
-  { cmd: "!fe heal", alias: "", note: "Spend a heal-staff use to restore your routed or wounded champion." },
-  { cmd: "!fe status", alias: "!fe s", note: "See the enemy's HP, the boss timer, and your champion's HP." },
-  { cmd: "!fe boss", alias: "mods only", note: "Summon a boss right now instead of waiting for the timer." },
-  { cmd: "!fe army", alias: "", note: "Get a link to your army on this site." },
-  { cmd: "!fe gold", alias: "!fe g", note: "Check your gold." },
-  { cmd: "!fe shop", alias: "", note: "List what the market sells and for how much." },
-  { cmd: "!fe buy sword", alias: "buy lance / axe / tome / staff", note: "Buy a weapon. It auto-equips and lasts 30 fights." },
-  { cmd: "!fe duel @name", alias: "!fe d @name", note: "Challenge a viewer. They have 60 seconds to !fe accept or !fe decline." },
-  { cmd: "!fe last", alias: "!fe l", note: "Who made the most recent recruit in this channel." },
-  { cmd: "!fe help", alias: "!fe h", note: "Print the command list in chat." },
-];
+import { HOMEPAGE_COMMANDS } from "@/features/commands/reference";
+
+const commands = HOMEPAGE_COMMANDS;
 
 export default function ChatCommandsHomePage() {
   return (
@@ -25,7 +15,8 @@ export default function ChatCommandsHomePage() {
             Everything starts with !fe
           </h2>
           <p className="mt-3 text-muted-foreground">
-            Fight results show on the overlay. Recruits, gold and duels are announced in chat.
+            Fight results show on the overlay. Recruits, gold and duels are announced in chat.{" "}
+            <Link href="/commands" className="text-primary underline">Full command guide</Link>
           </p>
         </div>
         <ol className="game-panel mt-10 divide-y divide-border overflow-hidden">

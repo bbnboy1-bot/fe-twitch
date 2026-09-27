@@ -16,6 +16,7 @@ import {
 import { OverlayView } from "@/features/overlay/OverlayView";
 import type { ActivePoke, OverlayCatch, OverlayEvent, OverlaySize } from "@/features/overlay/model";
 import { OVERLAY_PRESETS } from "@/features/overlay/presets";
+import { useChannelNames } from "@/features/units/names-context";
 import { getUnitDisplayName } from "@/features/units/presentation";
 import { recruitRandomUnit, ROSTER } from "@/features/units/roster";
 
@@ -36,6 +37,7 @@ export default function OverlayControls({
   url: string;
   onCopied?: () => void;
 }) {
+  const names = useChannelNames();
   const [showUrl, setShowUrl] = useState(false);
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
@@ -340,7 +342,7 @@ export default function OverlayControls({
                 <SelectContent position="popper">
                   {ROSTER.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
-                      {getUnitDisplayName(u.id)} {u.epithet}
+                      {getUnitDisplayName(u.id, names)} {u.epithet}
                     </SelectItem>
                   ))}
                 </SelectContent>

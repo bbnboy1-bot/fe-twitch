@@ -4,8 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { createClient } from "@/lib/supabase/server";
 
-import { cleanCustomName, type UnitNameMode } from "./names";
-import { LORDS } from "./roster";
+import { cleanCustomName, NAMEABLE_UNITS, type UnitNameMode } from "./names";
 
 export type RealmNamesState = { status: "idle" | "success" | "error"; message?: string };
 
@@ -13,9 +12,9 @@ export type RealmNamesState = { status: "idle" | "success" | "error"; message?: 
 export async function saveRealmNamesAction(_state: RealmNamesState, formData: FormData): Promise<RealmNamesState> {
   const mode: UnitNameMode = formData.get("mode") === "original" ? "original" : "official";
   const custom: Record<string, string> = {};
-  for (const lord of LORDS) {
-    const clean = cleanCustomName(formData.get(`name:${lord.id}`));
-    if (clean) custom[lord.id] = clean;
+  for (const unit of NAMEABLE_UNITS) {
+    const clean = cleanCustomName(formData.get(`name:${unit.id}`));
+    if (clean) custom[unit.id] = clean;
   }
   try {
     const supabase = await createClient();

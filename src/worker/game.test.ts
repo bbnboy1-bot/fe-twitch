@@ -67,7 +67,7 @@ function createStore(overrides: StoreOverrides = {}) {
     syncArena: async (_channel, arena) => {
       arenas.push(arena);
     },
-    getChannelNames: async () => ({ mode: "official", custom: {} }),
+    getChannelNames: async () => ({ mode: "original", custom: {} }),
     getChampionChoice: async () => null,
     setChampion: async () => true,
     chooseLord: async () => ({ previous: null, first: true, same: false }),
@@ -303,15 +303,20 @@ describe("PokemonGame encounters", () => {
   it("lists lords under the realm's names and lets a viewer set out with one", async () => {
     const chosen: string[] = [];
     const { game, client, messages } = createGame({
-      store: { chooseLord: async ({ lordId }) => { chosen.push(lordId); return { previous: null, first: true, same: false }; } },
+      store: {
+        getChannelNames: async () => ({ mode: "official", custom: {} }),
+        chooseLord: async ({ lordId }) => { chosen.push(lordId); return { previous: null, first: true, same: false }; },
+      },
     });
     await game.initialize("streamer");
     await game.handle("start", client, "streamer", viewer);
     expect(messages.at(-1)?.message).toContain("Lyn (sword)");
     expect(messages.at(-1)?.message).toContain("Claude (bow)");
     await game.handle("start", client, "streamer", viewer, "hector");
-    expect(chosen).toEqual(["lord-brannoc"]);
+    expect(chosen).toEqual(["lord-hadrian"]);
     expect(messages.at(-1)?.message).toContain("sets out with Hector the Iron Wall (axe)");
+    await game.handle("status", client, "streamer", viewer);
+    expect(messages.at(-1)?.message).toContain("Oswin the Steadfast"); // recruits are renamed too
   });
 
   it("uses original names when the channel asks for them", async () => {
@@ -320,7 +325,7 @@ describe("PokemonGame encounters", () => {
     });
     await game.initialize("streamer");
     await game.handle("start", client, "streamer", viewer);
-    expect(messages.at(-1)?.message).toContain("Brannoc (axe)");
+    expect(messages.at(-1)?.message).toContain("Hadrian (axe)");
     expect(messages.at(-1)?.message).toContain("Rook (bow)");
     await game.handle("start", client, "streamer", viewer, "rook");
     expect(messages.at(-1)?.message).toContain("Rook the Golden Schemer");
@@ -338,7 +343,11 @@ describe("PokemonGame encounters", () => {
   it("switches champion with !fe use and refuses units you do not own", async () => {
     const set: Array<string | null> = [];
     const { game, client, messages } = createGame({
-      store: { getUserUnitIds: async () => ["tamsin", "lord-roark"], setChampion: async ({ unitId }) => { set.push(unitId); return true; } },
+      store: {
+        getChannelNames: async () => ({ mode: "official", custom: {} }),
+        getUserUnitIds: async () => ["tamsin", "lord-roark"],
+        setChampion: async ({ unitId }) => { set.push(unitId); return true; },
+      },
     });
     await game.initialize("streamer");
     await game.handle("use", client, "streamer", viewer, "ike");
@@ -363,6 +372,7 @@ describe("PokemonGame encounters", () => {
     });
     await game.handle("welcome-pack", client, "streamer", viewer);
     expect(claims).toEqual([{ channel: "streamer", poke: "tamsin", twitchId: "1234", username: "viewer" }]);
-    expect(messages.at(-1)?.message).toBe("@viewer recruited Tamsin Quickblade [common] into their army!");
+    // Default (official) names apply before a channel loads its own settings.
+    expect(messages.at(-1)?.message).toBe("@viewer recruited Fir Quickblade [common] into their army!");
   });
 });

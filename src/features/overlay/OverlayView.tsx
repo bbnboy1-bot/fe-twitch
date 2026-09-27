@@ -8,6 +8,7 @@ import {
   UnitPortraitById,
   getUnitDisplayName,
 } from "@/features/units/presentation";
+import type { ChannelNames } from "@/features/units/names";
 import { getUnitById } from "@/features/units/roster";
 
 import {
@@ -31,6 +32,7 @@ export function OverlayView({
   catch: lastCatch,
   hideCatch = false,
   hideAttack = false,
+  names,
   primaryColor,
   cardColor,
   textColor,
@@ -43,6 +45,7 @@ export function OverlayView({
   catch: OverlayCatch;
   hideCatch?: boolean;
   hideAttack?: boolean;
+  names?: ChannelNames;
   primaryColor?: string;
   cardColor?: string;
   textColor?: string;
@@ -118,7 +121,7 @@ export function OverlayView({
         <div className="overlay-heading">
           <h1>
             {kind === "boss" && !recruit ? <em className="overlay-boss-tag">BOSS</em> : null}
-            {quiet ? "The field is quiet" : getUnitDisplayName(displayId)}
+            {quiet ? "The field is quiet" : getUnitDisplayName(displayId, names)}
             {unit && !quiet ? <small>{unit.epithet}</small> : null}
           </h1>
           <span>
@@ -136,7 +139,7 @@ export function OverlayView({
         ) : null}
         {!hideCatch && lastCatch.poke && lastCatch.player ? (
           <p className="overlay-last-catch">
-            Last: @<span>{lastCatch.player}</span> recruited {getUnitDisplayName(lastCatch.poke)}
+            Last: @<span>{lastCatch.player}</span> recruited {getUnitDisplayName(lastCatch.poke, names)}
           </p>
         ) : null}
         {!hideAttack && event.player && event.kind === "hit" ? (

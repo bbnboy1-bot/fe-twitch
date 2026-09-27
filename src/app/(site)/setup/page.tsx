@@ -38,6 +38,11 @@ export default async function SetupPage() {
           checklist once. Your viewers can keep playing against the same public
           overlay after setup is done.
         </p>
+        <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+          Share this site link with your viewers (panels, !commands, Discord) so they see your realm&apos;s names,
+          lords and leaderboard. Links the bot posts in chat already include it:{" "}
+          <code className="select-all break-all text-primary">{`${getAppOrigin()}/?realm=${account.channel.toLowerCase()}`}</code>
+        </p>
       </div>
       <div className="game-panel p-5 tablet:p-7">
         <StreamerSetup accountId={account.id} url={url} />

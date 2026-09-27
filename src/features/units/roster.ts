@@ -51,11 +51,11 @@ const RARITY_WEIGHT: Record<Rarity, number> = {
  * under their realm's own names (see `names.ts`); the roster itself stays original.
  */
 export const LORDS: Unit[] = [
-  u("lord-sable", "Sable", "Wind of the Steppe", "duelist", "lord", 24, 10, 15, 6, 13, 10),
-  u("lord-aldric", "Aldric", "the Gentle Blade", "duelist", "lord", 26, 11, 11, 8, 11, 12),
-  u("lord-brannoc", "Brannoc", "the Iron Wall", "berserker", "lord", 34, 15, 6, 13, 8, 5),
+  u("lord-wren", "Wren", "Wind of the Steppe", "duelist", "lord", 24, 10, 15, 6, 13, 10),
+  u("lord-anselm", "Anselm", "the Gentle Blade", "duelist", "lord", 26, 11, 11, 8, 11, 12),
+  u("lord-hadrian", "Hadrian", "the Iron Wall", "berserker", "lord", 34, 15, 6, 13, 8, 5),
   u("lord-elowen", "Elowen", "Rose of the Twin Crowns", "duelist", "lord", 23, 10, 13, 6, 14, 13),
-  u("lord-caelan", "Caelan", "the Reckless Prince", "outrider", "lord", 30, 14, 10, 8, 9, 5),
+  u("lord-cassian", "Cassian", "the Reckless Prince", "outrider", "lord", 30, 14, 10, 8, 9, 5),
   u("lord-roark", "Roark", "Sellsword of the Coast", "duelist", "lord", 31, 15, 10, 9, 11, 6),
   u("lord-isolde", "Isolde", "the Silver Seer", "arcanist", "lord", 23, 14, 10, 4, 12, 13),
   u("lord-torvin", "Torvin", "the Exalted", "duelist", "lord", 27, 12, 11, 9, 11, 11),

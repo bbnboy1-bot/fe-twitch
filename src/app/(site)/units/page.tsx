@@ -9,7 +9,9 @@ import {
   UnitPortrait,
   WEAPON_LABEL,
 } from "@/features/units/presentation";
+import { unitDisplayName } from "@/features/units/names";
 import { BOSSES, LORDS, ROSTER } from "@/features/units/roster";
+import { getSiteChannelNames } from "@/features/units/site-names";
 
 export const metadata: Metadata = {
   title: `Units | ${GAME_NAME}`,
@@ -18,7 +20,8 @@ export const metadata: Metadata = {
 
 const RARITY_ORDER: Rarity[] = ["legendary", "rare", "uncommon", "common"];
 
-export default function UnitsPage() {
+export default async function UnitsPage() {
+  const names = await getSiteChannelNames();
   return (
     <section className="container grid gap-8 py-10 tablet:py-14">
       <div className="max-w-2xl">
@@ -29,6 +32,7 @@ export default function UnitsPage() {
         <p className="mt-3 text-sm text-muted-foreground">
           Any of these can appear on the overlay. Defeat one and it joins your
           army. Rarer units are stronger and rarer to see.
+          {names.mode === "official" ? " Shown under this realm's community names; original names in brackets." : ""}
         </p>
       </div>
 
@@ -50,8 +54,8 @@ export default function UnitsPage() {
               >
                 <UnitPortrait unit={unit} size={56} />
                 <span className="min-w-0">
-                  <span className="block truncate font-heading font-bold">{unit.name}</span>
-                  <span className="block truncate text-xs italic text-muted-foreground">{unit.epithet}</span>
+                  <span className="block truncate font-heading font-bold">{unitDisplayName(unit, names)}</span>
+                  <span className="block truncate text-xs italic text-muted-foreground">{unit.epithet}{unitDisplayName(unit, names) !== unit.name ? ` (${unit.name})` : ""}</span>
                 </span>
               </Link>
             </li>
@@ -81,7 +85,7 @@ export default function UnitsPage() {
                   >
                     <UnitPortrait unit={unit} size={56} />
                     <span className="min-w-0">
-                      <span className="block truncate font-heading font-bold">{unit.name}</span>
+                      <span className="block truncate font-heading font-bold">{unitDisplayName(unit, names)}</span>
                       <span className="block truncate text-xs italic text-muted-foreground">
                         {unit.epithet}
                       </span>
@@ -117,8 +121,8 @@ export default function UnitsPage() {
               >
                 <UnitPortrait unit={unit} size={56} />
                 <span className="min-w-0">
-                  <span className="block truncate font-heading font-bold">{unit.name}</span>
-                  <span className="block truncate text-xs italic text-muted-foreground">{unit.epithet}</span>
+                  <span className="block truncate font-heading font-bold">{unitDisplayName(unit, names)}</span>
+                  <span className="block truncate text-xs italic text-muted-foreground">{unit.epithet}{unitDisplayName(unit, names) !== unit.name ? ` (${unit.name})` : ""}</span>
                   <span className="mt-1 block text-xs text-muted-foreground">
                     {CLASS_META[unit.unitClass].label} · {unit.maxHp} field HP
                   </span>

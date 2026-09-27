@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 
 import { UnitPortraitById } from "@/features/units/presentation";
-import { getUnitById } from "@/features/units/roster";
 
 /**
  * Art swap point. Drop `public/sprites/<unitId>.png` (any original pixel art)
@@ -84,7 +83,6 @@ export function ArenaSprite({
   dim = false,
 }: ArenaSpriteProps) {
   const hasImage = useSpriteImage(unitId);
-  const unit = unitId ? getUnitById(unitId) : undefined;
   const pct = hp && hp.max > 0 ? Math.max(0, Math.min(100, (hp.hp / hp.max) * 100)) : null;
   const tone = pct === null ? "full" : pct <= 30 ? "low" : pct <= 60 ? "mid" : "full";
 
@@ -108,7 +106,7 @@ export function ArenaSprite({
       }
     >
       <div className="arena-unit-label" data-visible={showName ? "true" : "false"}>
-        <span className="arena-unit-name">{role === "player" ? name : unit?.name ?? name}</span>
+        <span className="arena-unit-name">{name}</span>
         {role !== "player" && epithet ? <span className="arena-unit-epithet">{epithet}</span> : null}
         {pct !== null ? (
           <span className="arena-unit-hp" data-tone={tone} aria-label={`${hp?.hp} of ${hp?.max} HP`}>

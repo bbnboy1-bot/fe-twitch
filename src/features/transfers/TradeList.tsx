@@ -1,4 +1,7 @@
+"use client";
+
 import { Check, Trash2, X } from "lucide-react";
+import { useChannelNames } from "@/features/units/names-context";
 import { getUnitDisplayName } from "@/features/units/presentation";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +17,7 @@ export function TradeList({
   trades: TradeRow[];
   mode: "sent" | "received";
 }) {
+  const names = useChannelNames();
   return (
     <section className="grid gap-3">
       <div className="flex items-center justify-between">
@@ -35,9 +39,9 @@ export function TradeList({
             >
               <div>
                 <p className="font-medium">
-                  <span>{getUnitDisplayName(trade.poke)}</span>
+                  <span>{getUnitDisplayName(trade.poke, names)}</span>
                   <span className="mx-2 text-muted-foreground">↔</span>
-                  <span>{getUnitDisplayName(trade.recipientpoke)}</span>
+                  <span>{getUnitDisplayName(trade.recipientpoke, names)}</span>
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {mode === "sent"
@@ -95,6 +99,7 @@ function DecisionButton({
   variant: "success" | "destructive";
   children: React.ReactNode;
 }) {
+  const names = useChannelNames();
   return (
     <form action={decideTradeAction}>
       <input type="hidden" name="tradeId" value={tradeId} />

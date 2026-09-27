@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { GAME_NAME } from "@/config/brand";
+import { normalizeRealm } from "@/features/realm/realm";
+import { getRealm } from "@/features/realm/server";
 import { BOSSES } from "@/features/units/roster";
 import { createPublicClient } from "@/lib/supabase/public";
 
@@ -40,7 +42,8 @@ export default async function LeaderboardPage({
   searchParams: Promise<{ channel?: string }>;
 }) {
   const params = await searchParams;
-  const channel = (params.channel ?? process.env.NEXT_PUBLIC_DEFAULT_CHANNEL ?? "").trim().toLowerCase();
+  // `?channel=` still works for old links; otherwise the visitor's realm.
+  const channel = normalizeRealm(params.channel) ?? (await getRealm()).channel ?? "";
   const boards = await getBoards(channel);
 
   return (
@@ -56,7 +59,7 @@ export default async function LeaderboardPage({
             </>
           ) : (
             <>
-              Add <code>?channel=name</code> to the address to see a channel&apos;s standings in {GAME_NAME}.
+              Choose a streamer&apos;s realm from the picker at the top of the page to see their standings in {GAME_NAME}.
             </>
           )}
         </p>

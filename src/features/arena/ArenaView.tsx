@@ -376,12 +376,13 @@ export function ArenaView({
           const u = ensureUnit(ev.player, ev.unitId);
           act(u, "attack");
           const enemy = getUnitById(ev.enemy);
+          const enemyName = enemy ? unitDisplayName(enemy, names) : ev.enemy;
           setLeaving({ unitId: ev.enemy, kind: ev.boss ? "boss" : "foe", action: "down" });
           later(ACTION_MS.leave, () => setLeaving(null));
           showBanner(
             ev.boss
-              ? `${ev.player} slays ${enemy ? `${enemy.name} ${enemy.epithet}` : ev.enemy}`
-              : `${ev.player} recruits ${enemy?.name ?? ev.enemy}`,
+              ? `${ev.player} slays ${enemy ? `${enemyName} ${enemy.epithet}` : ev.enemy}`
+              : `${ev.player} recruits ${enemyName}`,
             ev.boss ? "boss" : "recruit",
           );
           onRecruit?.(ev.player);
@@ -391,7 +392,7 @@ export function ArenaView({
           const enemy = getUnitById(ev.enemy);
           setLeaving({ unitId: ev.enemy, kind: "boss", action: "leave" });
           later(ACTION_MS.leave, () => setLeaving(null));
-          showBanner(`${enemy?.name ?? ev.enemy} escapes`, "escape");
+          showBanner(`${enemy ? unitDisplayName(enemy, names) : ev.enemy} escapes`, "escape");
           break;
         }
         case "duel":
@@ -400,7 +401,7 @@ export function ArenaView({
       }
       rerender();
     },
-    [act, enemyDo, ensureUnit, float, later, onRecruit, playDuel, showBanner],
+    [act, enemyDo, ensureUnit, float, later, names, onRecruit, playDuel, showBanner],
   );
 
   const events = poke?.arena?.events;
@@ -468,7 +469,7 @@ export function ArenaView({
         {enemyId ? (
           <ArenaSprite
             key={`enemy:${enemyId}`}
-            name={enemyUnit?.name ?? enemyId}
+            name={enemyUnit ? unitDisplayName(enemyUnit, names) : enemyId}
             unitId={enemyId}
             x={ARENA.enemyX}
             lane={2}

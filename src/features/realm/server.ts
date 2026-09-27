@@ -1,0 +1,51 @@
+import { cookies } from "next/headers";
+import { cache } from "react";
+
+import { getCurrentAccount } from "@/features/auth/queries";
+
+import { pickRealm, REALM_COOKIE, type RealmSource } from "./realm";
+
+export type Realm = {
+  channel: string | null;
+  source: RealmSource;
+  /** The signed-in streamer's own channel, if any (for "back to my realm"). */
+  ownChannel: string | null;
+};
+
+/**
+ * The realm for this request. The proxy has already copied any `?realm=` into
+ * the cookie on the incoming request, so reading the cookie covers case 1 too.
+ */
+export const getRealm = cache(async (): Promise<Realm> => {
+  let cookie: string | null = null;
+  try {
+    cookie = (await cookies()).get(REALM_COOKIE)?.value ?? null;
+  } catch {
+    cookie = null;
+  }
+  let ownChannel: string | null = null;
+  try {
+    ownChannel = (await getCurrentAccount())?.channel ?? null;
+  } catch {
+    ownChannel = null;
+  }
+  const picked = pickRealm({ cookie, accountChannel: ownChannel, envDefault: process.env.NEXT_PUBLIC_DEFAULT_CHANNEL });
+  return { ...picked, ownChannel: ownChannel?.toLowerCase() ?? null };
+});
+
+/** Channels running the game (public Twitch logins), for the realm picker. */
+export const listRealms = cache(async (): Promise<string[]> => {
+  try {
+    const { createPublicClient } = await import("@/lib/supabase/public");
+    const client = createPublicClient();
+    // fe_list_realms is newer than the generated Database types.
+    const rpc = (client.rpc as unknown as (fn: string) => PromiseLike<{ data: unknown; error: unknown }>).bind(client);
+    const { data, error } = await rpc("fe_list_realms");
+    if (error || !Array.isArray(data)) return [];
+    return data
+      .map((row) => (typeof row === "object" && row !== null ? (row as { channel?: unknown }).channel : null))
+      .filter((c): c is string => typeof c === "string" && c.length > 0);
+  } catch {
+    return [];
+  }
+});

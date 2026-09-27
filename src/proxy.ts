@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import { normalizeRealm, REALM_COOKIE, REALM_COOKIE_MAX_AGE, REALM_PARAM } from "@/features/realm/realm";
 import { createPublicClient } from "@/lib/supabase/public";
 import { updateSession } from "@/lib/supabase/proxy";
 
@@ -26,7 +27,21 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  return updateSession(request);
+  // Realm links: `?realm=<channel>` switches this browser's realm; `?realm=mine` clears it.
+  const realmParam = request.nextUrl.searchParams.get(REALM_PARAM);
+  const clearRealm = realmParam?.trim().toLowerCase() === "mine";
+  const realm = clearRealm ? null : normalizeRealm(realmParam);
+  if (realm) request.cookies.set(REALM_COOKIE, realm);
+  if (clearRealm) request.cookies.delete(REALM_COOKIE);
+
+  const response = await updateSession(request);
+
+  if (realm) {
+    response.cookies.set(REALM_COOKIE, realm, { path: "/", maxAge: REALM_COOKIE_MAX_AGE, sameSite: "lax" });
+  } else if (clearRealm) {
+    response.cookies.delete(REALM_COOKIE);
+  }
+  return response;
 }
 
 export const config = {
