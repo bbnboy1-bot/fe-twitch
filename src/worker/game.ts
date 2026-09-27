@@ -16,7 +16,8 @@ import {
 } from "@/features/encounters/rules";
 import { DuelManager, pickChampion, resolveDuel } from "@/features/units/duel";
 import type { Unit } from "@/features/units/model";
-import { type Boss, getUnitById, pickRandomBoss, recruitRandomUnit } from "@/features/units/roster";
+import { type ChannelNames, DEFAULT_CHANNEL_NAMES, lordDisplayNames, withChannelName } from "@/features/units/names";
+import { type Boss, findLord, getUnitById, LORDS, pickRandomBoss, recruitRandomUnit } from "@/features/units/roster";
 
 function randomUnitId(): Promise<string> {
   return Promise.resolve(recruitRandomUnit().id);
@@ -102,6 +103,14 @@ export interface GameStore {
   endEncounter(_channel: string): Promise<void>;
   // eslint-disable-next-line no-unused-vars
   logBattle(_channel: string, _line: string): Promise<void>;
+  // eslint-disable-next-line no-unused-vars
+  getChannelNames(_channel: string): Promise<ChannelNames>;
+  // eslint-disable-next-line no-unused-vars
+  getChampionChoice(_input: { channel: string; user: string }): Promise<string | null>;
+  // eslint-disable-next-line no-unused-vars
+  setChampion(_input: { channel: string; user: string; unitId: string | null }): Promise<boolean>;
+  // eslint-disable-next-line no-unused-vars
+  chooseLord(_input: { channel: string; user: string; lordId: string; twitchId: string }): Promise<{ previous: string | null; first: boolean; same: boolean }>;
   /** Mirrors fighters + recent structured events for the arena overlay (Phase 6). */
   // eslint-disable-next-line no-unused-vars
   syncArena(_channel: string, _arena: ArenaState): Promise<void>;
@@ -153,6 +162,8 @@ export class PokemonGame {
   private readonly arenaEvents = new Map<string, ArenaEvent[]>();
   /** Monotonic event id. Seeded from the clock so a restart never reuses ids the overlay has seen. */
   private arenaSeq = 0;
+  /** Realm names per channel (Phase 7), refreshed in the background every minute. */
+  private readonly namesCache = new Map<string, { names: ChannelNames; at: number }>();
 
   constructor(
     store: GameStore,
@@ -194,6 +205,25 @@ export class PokemonGame {
     }
   }
 
+  /** Cached realm names for a channel; kicks off a refresh when stale, never blocks. */
+  private names(channel: string): ChannelNames {
+    const hit = this.namesCache.get(channel);
+    if (!hit || this.now() - hit.at > 60_000) {
+      this.namesCache.set(channel, { names: hit?.names ?? DEFAULT_CHANNEL_NAMES, at: this.now() });
+      void this.store
+        .getChannelNames(channel)
+        .then((names) => this.namesCache.set(channel, { names, at: this.now() }))
+        .catch((error) => console.error("Channel names lookup failed:", error));
+    }
+    return hit?.names ?? DEFAULT_CHANNEL_NAMES;
+  }
+
+  /** A unit carrying this channel's display name (lords may be renamed per realm). */
+  private unit(channel: string, id: string): Unit | undefined {
+    const u = getUnitById(id);
+    return u ? withChannelName(u, this.names(channel)) : undefined;
+  }
+
   /**
    * Arena overlay event: appends to the channel's event list, snapshots the
    * current fighters, and writes both to the DB. Never blocks the game.
@@ -227,6 +257,11 @@ export class PokemonGame {
 
   /** Bot joined a channel: first foe arrives right away, boss clock starts. */
   async initialize(channel: string) {
+    try {
+      this.namesCache.set(channel, { names: await this.store.getChannelNames(channel), at: this.now() });
+    } catch (error) {
+      console.error("Channel names lookup failed:", error);
+    }
     this.director?.start(channel);
     await this.spawnFoe(channel);
   }
@@ -281,7 +316,7 @@ export class PokemonGame {
     if (!e) return;
     const target = this.field.pickRaidTarget(channel, this.dependencies.rng);
     if (!target?.unitId) return;
-    const champion = getUnitById(target.unitId);
+    const champion = this.unit(channel, target.unitId);
     if (!champion) return;
     const weapon = await this.store.useEquippedWeapon({ channel, user: target.username });
     const strike = rollEnemyStrike(
@@ -341,7 +376,7 @@ export class PokemonGame {
     if (command === "help") {
       await client.say(
         channel,
-        "Emblem: !fe fight | heal | duel @user | accept | gold | shop | buy <item> | army | recruit | status | last (mods: !fe boss)",
+        "FE Duel: !fe start <lord> | fight | use <unit> | heal | duel @user | accept | gold | shop | buy <item> | army | status | last (mods: !fe boss)",
       );
       return;
     }
@@ -405,6 +440,12 @@ export class PokemonGame {
     if (command === "welcome-pack") {
       return this.welcomePack(client, channel, player);
     }
+    if (command === "start") {
+      return this.start(client, channel, player, arg);
+    }
+    if (command === "use") {
+      return this.use(client, channel, player, arg);
+    }
     if (command === "inventory") {
       return this.inventory(client, channel, player);
     }
@@ -461,7 +502,7 @@ export class PokemonGame {
     const left = e.expiresAt ? ` ${Math.max(0, Math.ceil((e.expiresAt - this.now()) / 1000))}s left.` : "";
     const me = this.field.getFighter(channel, player.username);
     const mine = me?.unitId
-      ? ` Your ${getUnitById(me.unitId)?.name ?? "champion"}: ${me.routed ? "routed" : `${me.hp}/${me.maxHp} HP`}.`
+      ? ` Your ${this.unit(channel, me.unitId)?.name ?? "champion"}: ${me.routed ? "routed" : `${me.hp}/${me.maxHp} HP`}.`
       : "";
     await client.say(
       channel,
@@ -485,18 +526,18 @@ export class PokemonGame {
       return;
     }
     const healed = this.field.heal(channel, player.username);
-    await this.log(channel, `${player.username} heals ${getUnitById(f.unitId)?.name ?? "their champion"}`);
+    await this.log(channel, `${player.username} heals ${this.unit(channel, f.unitId)?.name ?? "their champion"}`);
     await this.emit(channel, { type: "heal", player: player.username, unitId: f.unitId, hp: healed?.maxHp ?? f.maxHp });
     await client.say(
       channel,
-      `✨ @${player.username}'s ${getUnitById(f.unitId)?.name ?? "champion"} is restored to ${healed?.maxHp} HP (${staff.uses} staff uses left).`,
+      `✨ @${player.username}'s ${this.unit(channel, f.unitId)?.name ?? "champion"} is restored to ${healed?.maxHp} HP (${staff.uses} staff uses left).`,
     );
   }
 
   /** Returns the viewer's fighter for this encounter, creating it with champion HP on first fight. */
   private async enlist(channel: string, player: GamePlayer): Promise<{ fighter: Fighter; champion: Unit | null; weapon: EquippedWeapon }> {
     const existing = this.field.getFighter(channel, player.username);
-    const champion = existing?.unitId ? (getUnitById(existing.unitId) ?? null) : await this.championFor(channel, player.username);
+    const champion = existing?.unitId ? (this.unit(channel, existing.unitId) ?? null) : await this.championFor(channel, player.username);
     const weapon = champion ? await this.store.useEquippedWeapon({ channel, user: player.username }) : null;
     const fighter =
       existing ??
@@ -643,12 +684,74 @@ export class PokemonGame {
     );
   }
 
+  /** The viewer's chosen champion if they picked one they still own, otherwise their strongest unit. */
   private async championFor(channel: string, user: string): Promise<Unit | null> {
-    const ids = await this.store.getUserUnitIds({ channel, user });
+    const [ids, chosen] = await Promise.all([
+      this.store.getUserUnitIds({ channel, user }),
+      this.store.getChampionChoice({ channel, user }),
+    ]);
+    if (chosen && ids.includes(chosen)) {
+      const pick = this.unit(channel, chosen);
+      if (pick) return pick;
+    }
     const units = ids
-      .map((id) => getUnitById(id))
+      .map((id) => this.unit(channel, id))
       .filter((x): x is Unit => Boolean(x));
     return pickChampion(units);
+  }
+
+  /** `!fe start` lists the lords; `!fe start <name>` claims or swaps to one. */
+  private async start(client: tmi.Client, channel: string, player: GamePlayer, arg: string | null) {
+    const names = lordDisplayNames(this.names(channel));
+    if (!arg) {
+      const list = LORDS.map((l) => `${names[l.id]} (${l.weapon})`).join(", ");
+      await client.say(channel, `@${player.username}, choose your lord with !fe start <name>: ${list}`);
+      return;
+    }
+    const firstWords = Object.fromEntries(Object.entries(names).map(([id, n]) => [id, n.split(" ")[0]]));
+    const lord = findLord(arg, names) ?? findLord(arg, firstWords);
+    if (!lord) {
+      await client.say(channel, `@${player.username}, no lord called "${arg}". Type !fe start to see the list.`);
+      return;
+    }
+    const shown = this.unit(channel, lord.id) ?? lord;
+    const result = await this.store.chooseLord({ channel, user: player.username, lordId: lord.id, twitchId: player.twitchId });
+    if (result.same) {
+      await client.say(channel, `@${player.username}, ${shown.name} already leads your army.`);
+      return;
+    }
+    await this.log(channel, `${player.username} ${result.previous ? "rallies behind" : "sets out with"} ${shown.name}`);
+    if (result.previous) {
+      const prev = this.unit(channel, result.previous);
+      await client.say(channel, `⚔️ @${player.username} parts ways with ${prev?.name ?? "their lord"} and rallies behind ${shown.name} ${shown.epithet}!`);
+    } else {
+      await client.say(
+        channel,
+        `⚔️ @${player.username} sets out with ${shown.name} ${shown.epithet} (${shown.weapon})! Type !fe fight when a foe appears.`,
+      );
+    }
+  }
+
+  /** `!fe use <unit>` pins the fighter; `!fe use auto` returns to strongest. */
+  private async use(client: tmi.Client, channel: string, player: GamePlayer, arg: string | null) {
+    if (!arg || arg === "auto" || arg === "best") {
+      await this.store.setChampion({ channel, user: player.username, unitId: null });
+      const best = await this.championFor(channel, player.username);
+      await client.say(channel, best ? `@${player.username}, your strongest unit fights for you: ${best.name}.` : `@${player.username}, you have no units yet - !fe start to choose a lord.`);
+      return;
+    }
+    const ids = await this.store.getUserUnitIds({ channel, user: player.username });
+    const owned = ids.map((id) => this.unit(channel, id)).filter((u): u is Unit => Boolean(u));
+    const q = arg.toLowerCase();
+    const pick = owned.find((u) => u.id === q || u.id === `lord-${q}` || u.name.toLowerCase() === q || u.name.toLowerCase().split(" ")[0] === q);
+    if (!pick) {
+      await client.say(channel, `@${player.username}, you don't own "${arg}". !fe army shows your units.`);
+      return;
+    }
+    await this.store.setChampion({ channel, user: player.username, unitId: pick.id });
+    const f = this.field.getFighter(channel, player.username);
+    const note = f && f.unitId !== pick.id ? " (takes effect from the next foe)" : "";
+    await client.say(channel, `@${player.username}, ${pick.name} ${pick.epithet} now fights for you${note}.`);
   }
 
   private async acceptDuel(client: tmi.Client, channel: string, player: GamePlayer) {
@@ -663,7 +766,7 @@ export class PokemonGame {
     ]);
     if (!unitA || !unitB) {
       const missing = !unitA ? challenger : player.username;
-      await client.say(channel, `@${missing} has no units yet - grab one with !fe recruit.`);
+      await client.say(channel, `@${missing} has no units yet - choose a lord with !fe start.`);
       return;
     }
     const [weaponA, weaponB] = await Promise.all([

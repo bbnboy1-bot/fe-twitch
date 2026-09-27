@@ -41,7 +41,48 @@ const RARITY_WEIGHT: Record<Rarity, number> = {
   uncommon: 220,
   rare: 70,
   legendary: 10,
+  lord: 0, // never in the random pool
 };
+
+/**
+ * Lords of Veyra (Phase 7). A viewer picks one with `!fe start <name>`; it is
+ * their journey's hero, not a field recruit. Stats sit between rare and warlord.
+ * Ids are `lord-*` so ownership rules can find them. Streamers may show these
+ * under their realm's own names (see `names.ts`); the roster itself stays original.
+ */
+export const LORDS: Unit[] = [
+  u("lord-sable", "Sable", "Wind of the Steppe", "duelist", "lord", 24, 10, 15, 6, 13, 10),
+  u("lord-aldric", "Aldric", "the Gentle Blade", "duelist", "lord", 26, 11, 11, 8, 11, 12),
+  u("lord-brannoc", "Brannoc", "the Iron Wall", "berserker", "lord", 34, 15, 6, 13, 8, 5),
+  u("lord-elowen", "Elowen", "Rose of the Twin Crowns", "duelist", "lord", 23, 10, 13, 6, 14, 13),
+  u("lord-caelan", "Caelan", "the Reckless Prince", "outrider", "lord", 30, 14, 10, 8, 9, 5),
+  u("lord-roark", "Roark", "Sellsword of the Coast", "duelist", "lord", 31, 15, 10, 9, 11, 6),
+  u("lord-isolde", "Isolde", "the Silver Seer", "arcanist", "lord", 23, 14, 10, 4, 12, 13),
+  u("lord-torvin", "Torvin", "the Exalted", "duelist", "lord", 27, 12, 11, 9, 11, 11),
+  u("lord-vesper", "Vesper", "the Masked Stranger", "duelist", "lord", 25, 11, 15, 6, 14, 8),
+  u("lord-nerys", "Nerys", "the Dragon-Blooded", "duelist", "lord", 27, 12, 11, 8, 10, 12),
+  u("lord-ottilie", "Ottilie", "the Iron Empress", "berserker", "lord", 30, 16, 7, 12, 10, 6),
+  u("lord-leoric", "Leoric", "the Haunted Heir", "sentinel", "lord", 32, 15, 9, 10, 9, 5),
+  u("lord-faelan", "Faelan", "the Golden Schemer", "ranger", "lord", 25, 11, 13, 6, 15, 13),
+  u("lord-amaris", "Amaris", "Blade of the Divine", "duelist", "lord", 28, 12, 12, 9, 12, 12),
+];
+
+export function isLordId(id: string): boolean {
+  return id.startsWith("lord-");
+}
+
+/** Find a lord by id, original name, or a channel display name (case-insensitive). */
+export function findLord(query: string, displayNames?: Record<string, string>): Unit | undefined {
+  const q = query.trim().toLowerCase();
+  if (!q) return undefined;
+  return LORDS.find(
+    (l) =>
+      l.id === q ||
+      l.id === `lord-${q}` ||
+      l.name.toLowerCase() === q ||
+      (displayNames?.[l.id] ?? "").toLowerCase() === q,
+  );
+}
 
 /** Weighted random recruit — drop-in replacement for getRandomPokemonSpeciesName. */
 export function recruitRandomUnit(rng: () => number = Math.random): Unit {
@@ -80,7 +121,7 @@ export function pickRandomBoss(rng: () => number = Math.random): Boss {
 }
 
 export function getUnitById(id: string): Unit | undefined {
-  return ROSTER.find((x) => x.id === id) ?? BOSSES.find((x) => x.id === id);
+  return ROSTER.find((x) => x.id === id) ?? BOSSES.find((x) => x.id === id) ?? LORDS.find((x) => x.id === id);
 }
 
 function b(unit: Unit, maxHp: number, goldPool: number, arrival: string): Boss {

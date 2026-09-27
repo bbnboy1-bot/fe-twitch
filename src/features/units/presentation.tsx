@@ -17,7 +17,7 @@ export const CLASS_META: Record<
   berserker: { label: "Berserker", blurb: "Axe bruiser. Huge damage, thin defence.", hue: 25 },
   skyrider: { label: "Skyrider", blurb: "Flying lance. Speed and skill over bulk.", hue: 300 },
   ranger: { label: "Ranger", blurb: "Bow specialist. Accurate and hard to pin down.", hue: 120 },
-  arcanist: { label: "Arcanist", blurb: "Tome wielder. Beats bows, ignores armour's bulk.", hue: 280 },
+  arcanist: { label: "Arcanist", blurb: "Tome wielder. Outside the triangle, ignores armour's bulk.", hue: 280 },
   mender: { label: "Mender", blurb: "Staff support. Lucky and durable, low attack.", hue: 60 },
 };
 
@@ -29,6 +29,7 @@ export const RARITY_META: Record<
   uncommon: { label: "Uncommon", color: "oklch(0.72 0.15 150)", odds: "22%" },
   rare: { label: "Rare", color: "oklch(0.72 0.15 250)", odds: "7%" },
   legendary: { label: "Legendary", color: "oklch(0.83 0.14 82)", odds: "1%" },
+  lord: { label: "Lord", color: "oklch(0.8 0.12 60)", odds: "!fe start" },
 };
 
 export const WEAPON_LABEL: Record<WeaponType, string> = {

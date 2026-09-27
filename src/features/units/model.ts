@@ -16,7 +16,7 @@ export type UnitClass =
   | "arcanist" // tome
   | "mender"; // staff support
 
-export type Rarity = "common" | "uncommon" | "rare" | "legendary";
+export type Rarity = "common" | "uncommon" | "rare" | "legendary" | "lord";
 
 export type Stats = {
   hp: number;
@@ -48,14 +48,12 @@ export const CLASS_WEAPON: Record<UnitClass, WeaponType> = {
   mender: "staff",
 };
 
-/** Classic triangle: sword > axe > lance > sword. Tomes beat bows; staves neutral. */
+/** Classic triangle: sword > axe > lance > sword. Bows, tomes and staves sit outside it (neutral). */
 export function triangleModifier(a: WeaponType, b: WeaponType): number {
   const beats: Partial<Record<WeaponType, WeaponType>> = {
     sword: "axe",
     axe: "lance",
     lance: "sword",
-    tome: "bow",
-    bow: "tome",
   };
   if (beats[a] === b) return 1;
   if (beats[b] === a) return -1;

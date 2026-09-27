@@ -12,9 +12,9 @@ describe("weapon triangle", () => {
     expect(triangleModifier("sword", "sword")).toBe(0);
   });
 
-  it("pits tomes against bows", () => {
-    expect(triangleModifier("tome", "bow")).toBe(1);
-    expect(triangleModifier("bow", "tome")).toBe(1);
+  it("keeps bows and tomes outside the triangle", () => {
+    expect(triangleModifier("tome", "bow")).toBe(0);
+    expect(triangleModifier("bow", "sword")).toBe(0);
   });
 });
 

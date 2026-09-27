@@ -28,7 +28,7 @@ export const ENCOUNTER = {
   /** Minimum share any boss contributor receives. */
   bossMinShare: 5,
   /** Field HP multiplier per rarity for regular foes (unit base.hp * mult). */
-  hpMultiplier: { common: 2, uncommon: 2.5, rare: 3, legendary: 4 } as const,
+  hpMultiplier: { common: 2, uncommon: 2.5, rare: 3, legendary: 4, lord: 3.5 } as const,
 };
 
 export type EncounterKind = "foe" | "boss";

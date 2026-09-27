@@ -7,11 +7,12 @@ export type ShopItem = {
   uses: number;
 };
 
-/** Hudson's market: Sword, Lance, Axe, Tome, Heal Staff — 30 uses each. */
+/** Hudson's market: Sword, Lance, Axe, Bow, Tome, Heal Staff — 30 uses each. */
 export const SHOP: ShopItem[] = [
   { kind: "sword", label: "Steel Sword", price: 100, uses: 30 },
   { kind: "lance", label: "Steel Lance", price: 100, uses: 30 },
   { kind: "axe", label: "Steel Axe", price: 100, uses: 30 },
+  { kind: "bow", label: "Steel Bow", price: 100, uses: 30 },
   { kind: "tome", label: "Ember Tome", price: 120, uses: 30 },
   { kind: "staff", label: "Heal Staff", price: 150, uses: 30 },
 ];

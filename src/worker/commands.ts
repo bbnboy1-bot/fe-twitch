@@ -12,17 +12,23 @@ export type PokeCommand =
   | "shop"
   | "buy"
   | "heal"
-  | "boss";
+  | "boss"
+  | "start"
+  | "use";
 
 const COMMANDS: Record<string, PokeCommand> = {
   attack: "attack",
   a: "attack",
   fight: "attack",
   f: "attack",
-  recruit: "welcome-pack",
-  r: "welcome-pack",
-  muster: "welcome-pack",
-  m: "welcome-pack",
+  start: "start",
+  recruit: "start",
+  r: "start",
+  muster: "start",
+  m: "start",
+  use: "use",
+  u: "use",
+  champion: "use",
   army: "inventory",
   welcomepack: "welcome-pack",
   wp: "welcome-pack",
@@ -164,7 +170,7 @@ export class CommandGate {
   constructor(now: () => number = Date.now) {
     this.attackCooldowns = new CooldownStore(10_000, now);
     this.informationCooldowns = new CooldownStore(10_000, now);
-    this.welcomePackCooldowns = new CooldownStore(31_000, now);
+    this.welcomePackCooldowns = new CooldownStore(5_000, now); // short: list, then pick
   }
 
   consume(command: PokeCommand, channel: string, user: string) {
@@ -174,7 +180,7 @@ export class CommandGate {
     if (INFORMATION_COMMANDS.has(command)) {
       return this.informationCooldowns.consume(channel, command);
     }
-    if (command === "welcome-pack") {
+    if (command === "welcome-pack" || command === "start") {
       return this.welcomePackCooldowns.consume(channel, user);
     }
     return true;
@@ -187,7 +193,7 @@ export class CommandGate {
     if (INFORMATION_COMMANDS.has(command)) {
       return this.informationCooldowns.getRemainingCooldown(channel, command);
     }
-    if (command === "welcome-pack") {
+    if (command === "welcome-pack" || command === "start") {
       return this.welcomePackCooldowns.getRemainingCooldown(channel, user);
     }
     return 0;

@@ -44,6 +44,18 @@ export type Database = {
         poke: string;
         updated_at: string;
       }>;
+      channel_settings: Table<{
+        channel: string;
+        unit_name_mode: string;
+        unit_names: unknown;
+        updated_at: string;
+      }>;
+      player_champions: Table<{
+        channel: string;
+        unit_id: string | null;
+        updated_at: string;
+        user: string;
+      }>;
       collections: Table<{
         channel: string;
         created_at: string;

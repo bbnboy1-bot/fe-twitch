@@ -1,8 +1,10 @@
 import { ArenaSourceCard } from "@/components/ArenaSourceCard";
+import { RealmNamesCard } from "@/components/RealmNamesCard";
 import { SignInPrompt } from "@/components/SignInPrompt";
 import { StreamerSetup } from "@/components/StreamerSetup";
 import { getAppOrigin } from "@/features/auth/origin";
 import { getCurrentAccount } from "@/features/auth/queries";
+import { getChannelNames } from "@/features/units/channel-names";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,7 @@ export default async function SetupPage() {
   }
 
   const url = `${getAppOrigin()}/overlays/${account.id}`;
+  const names = await getChannelNames(account.channel);
 
   return (
     <section className="container grid max-w-5xl gap-7 py-10 tablet:py-14">
@@ -41,6 +44,9 @@ export default async function SetupPage() {
       </div>
       <div className="game-panel p-5 tablet:p-7">
         <ArenaSourceCard url={`${url}/arena`} />
+      </div>
+      <div className="game-panel p-5 tablet:p-7">
+        <RealmNamesCard initial={names} />
       </div>
     </section>
   );

@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { ArenaState } from "@/features/arena/events";
+import { type ChannelNames, parseChannelNames } from "@/features/units/names";
 
 import type {
   AttackInput,
@@ -31,6 +32,48 @@ export class SupabaseGameStore implements GameStore {
   async logBattle(channel: string, line: string) {
     const { error } = await this.client.rpc("fe_log_battle", { p_channel: channel, p_line: line });
     if (error) throw error;
+  }
+
+  async getChannelNames(channel: string): Promise<ChannelNames> {
+    const { data, error } = await this.client
+      .from("channel_settings")
+      .select("unit_name_mode,unit_names")
+      .eq("channel", channel)
+      .maybeSingle();
+    if (error) throw error;
+    return parseChannelNames(data ? { mode: data.unit_name_mode, custom: data.unit_names } : null);
+  }
+
+  async getChampionChoice(input: { channel: string; user: string }): Promise<string | null> {
+    const { data, error } = await this.client
+      .from("player_champions")
+      .select("unit_id")
+      .eq("channel", input.channel)
+      .eq("user", input.user)
+      .maybeSingle();
+    if (error) throw error;
+    return (data?.unit_id as string | null) ?? null;
+  }
+
+  async setChampion(input: { channel: string; user: string; unitId: string | null }): Promise<boolean> {
+    const { data, error } = await this.client.rpc("fe_set_champion", {
+      p_channel: input.channel,
+      p_user: input.user,
+      p_unit: input.unitId,
+    });
+    if (error) throw error;
+    return data === true;
+  }
+
+  async chooseLord(input: { channel: string; user: string; lordId: string; twitchId: string }): Promise<{ previous: string | null; first: boolean; same: boolean }> {
+    const { data, error } = await this.client.rpc("fe_choose_lord", {
+      p_channel: input.channel,
+      p_user: input.user,
+      p_lord: input.lordId,
+      p_twitch_id: input.twitchId,
+    });
+    if (error) throw error;
+    return data as { previous: string | null; first: boolean; same: boolean };
   }
 
   async syncArena(channel: string, arena: ArenaState) {

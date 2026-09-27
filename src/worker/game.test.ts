@@ -67,6 +67,10 @@ function createStore(overrides: StoreOverrides = {}) {
     syncArena: async (_channel, arena) => {
       arenas.push(arena);
     },
+    getChannelNames: async () => ({ mode: "official", custom: {} }),
+    getChampionChoice: async () => null,
+    setChampion: async () => true,
+    chooseLord: async () => ({ previous: null, first: true, same: false }),
     endEncounter: async () => {
       state.kind = "lull";
       state.health = 0;
@@ -294,6 +298,56 @@ describe("PokemonGame encounters", () => {
     expect(duel.strikes.length).toBeGreaterThan(0);
     expect(duel.strikes.every((x) => x.att === "viewer" || x.att === "rival")).toBe(true);
     expect(messages.at(-1)?.message).toContain(`@${duel.winner}'s`);
+  });
+
+  it("lists lords under the realm's names and lets a viewer set out with one", async () => {
+    const chosen: string[] = [];
+    const { game, client, messages } = createGame({
+      store: { chooseLord: async ({ lordId }) => { chosen.push(lordId); return { previous: null, first: true, same: false }; } },
+    });
+    await game.initialize("streamer");
+    await game.handle("start", client, "streamer", viewer);
+    expect(messages.at(-1)?.message).toContain("Lyn (sword)");
+    expect(messages.at(-1)?.message).toContain("Claude (bow)");
+    await game.handle("start", client, "streamer", viewer, "hector");
+    expect(chosen).toEqual(["lord-brannoc"]);
+    expect(messages.at(-1)?.message).toContain("sets out with Hector the Iron Wall (axe)");
+  });
+
+  it("uses original names when the channel asks for them", async () => {
+    const { game, client, messages } = createGame({
+      store: { getChannelNames: async () => ({ mode: "original", custom: { "lord-faelan": "Rook" } }) },
+    });
+    await game.initialize("streamer");
+    await game.handle("start", client, "streamer", viewer);
+    expect(messages.at(-1)?.message).toContain("Brannoc (axe)");
+    expect(messages.at(-1)?.message).toContain("Rook (bow)");
+    await game.handle("start", client, "streamer", viewer, "rook");
+    expect(messages.at(-1)?.message).toContain("Rook the Golden Schemer");
+  });
+
+  it("fights with the chosen champion instead of the strongest unit", async () => {
+    const { game, client, arenas } = createGame({
+      store: { getUserUnitIds: async () => ["tamsin", "brannoc"], getChampionChoice: async () => "tamsin" },
+    });
+    await game.initialize("streamer");
+    await game.handle("attack", client, "streamer", viewer);
+    expect(arenas.at(-1)!.fighters[0]).toMatchObject({ unitId: "tamsin" });
+  });
+
+  it("switches champion with !fe use and refuses units you do not own", async () => {
+    const set: Array<string | null> = [];
+    const { game, client, messages } = createGame({
+      store: { getUserUnitIds: async () => ["tamsin", "lord-roark"], setChampion: async ({ unitId }) => { set.push(unitId); return true; } },
+    });
+    await game.initialize("streamer");
+    await game.handle("use", client, "streamer", viewer, "ike");
+    expect(set).toEqual(["lord-roark"]);
+    expect(messages.at(-1)?.message).toContain("Ike Sellsword of the Coast now fights for you");
+    await game.handle("use", client, "streamer", viewer, "nyx");
+    expect(messages.at(-1)?.message).toContain("don't own");
+    await game.handle("use", client, "streamer", viewer, "auto");
+    expect(set.at(-1)).toBeNull();
   });
 
   it("claims a welcome pack once using the stable Twitch identity", async () => {

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ArenaView, type ArenaOptions } from "@/features/arena/ArenaView";
 import { type RosterEntry, parseRoster } from "@/features/arena/roster";
 import type { ActivePoke } from "@/features/overlay/model";
+import type { ChannelNames } from "@/features/units/names";
 import { useOverlayRealtime } from "@/features/overlay/use-overlay-realtime";
 
 const ROSTER_REFRESH_MS = 5 * 60_000;
@@ -16,6 +17,7 @@ export default function ArenaOverlayPage({
   initialRoster,
   rosterLimit,
   options,
+  names,
 }: {
   channel: string;
   overlayId: string;
@@ -23,6 +25,7 @@ export default function ArenaOverlayPage({
   initialRoster: RosterEntry[];
   rosterLimit: number;
   options: ArenaOptions;
+  names: ChannelNames;
 }) {
   const { connection, poke } = useOverlayRealtime({ channel, initialPoke, overlayId });
   const [roster, setRoster] = useState<RosterEntry[]>(initialRoster);
@@ -52,7 +55,7 @@ export default function ArenaOverlayPage({
 
   return (
     <main className="overlay-viewport arena-viewport" data-testid="arena-overlay">
-      <ArenaView poke={poke} roster={roster} options={options} onRecruit={onRecruit} />
+      <ArenaView poke={poke} roster={roster} options={options} names={names} onRecruit={onRecruit} />
       {showConnectionBadge ? (
         <span className="overlay-connection" data-connection={connection} role="status">
           {connection}

@@ -4,6 +4,7 @@ import ArenaOverlayPage from "@/components/ArenaOverlayPage";
 import { clampRosterLimit, fetchArenaRoster } from "@/features/arena/roster";
 import { loadOverlay } from "@/features/overlay/loader";
 import { getActivePoke, getOverlayChannel } from "@/features/overlay/queries";
+import { getChannelNames } from "@/features/units/channel-names";
 import { createPublicClient } from "@/lib/supabase/public";
 
 export const dynamic = "force-dynamic";
@@ -32,8 +33,11 @@ export default async function ArenaPage({
   if (result.status === "missing") notFound();
 
   const rosterLimit = clampRosterLimit(query.max);
-  const roster = await fetchArenaRoster(createPublicClient(), result.channel, rosterLimit);
-  const names = query.names === "fighters" || query.names === "none" ? query.names : "all";
+  const [roster, names] = await Promise.all([
+    fetchArenaRoster(createPublicClient(), result.channel, rosterLimit),
+    getChannelNames(result.channel),
+  ]);
+  const labelMode = query.names === "fighters" || query.names === "none" ? query.names : "all";
 
   return (
     <ArenaOverlayPage
@@ -42,7 +46,8 @@ export default async function ArenaPage({
       initialPoke={result.initialPoke}
       initialRoster={roster}
       rosterLimit={rosterLimit}
-      options={{ names, scale: parseScale(query.scale), debug: query.debug === "1" }}
+      names={names}
+      options={{ names: labelMode, scale: parseScale(query.scale), debug: query.debug === "1" }}
     />
   );
 }

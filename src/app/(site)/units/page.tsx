@@ -9,7 +9,7 @@ import {
   UnitPortrait,
   WEAPON_LABEL,
 } from "@/features/units/presentation";
-import { BOSSES, ROSTER } from "@/features/units/roster";
+import { BOSSES, LORDS, ROSTER } from "@/features/units/roster";
 
 export const metadata: Metadata = {
   title: `Units | ${GAME_NAME}`,
@@ -32,8 +32,35 @@ export default function UnitsPage() {
         </p>
       </div>
 
+      <div>
+        <div className="mb-3 flex items-baseline gap-3">
+          <h2 className="font-heading text-xl font-bold" style={{ color: RARITY_META.lord.color }}>
+            Lords
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            pick one with !fe start &lt;name&gt; - your hero, swappable any time
+          </span>
+        </div>
+        <ul className="grid grid-cols-2 gap-3 tablet:grid-cols-3 laptop:grid-cols-4">
+          {LORDS.map((unit) => (
+            <li key={unit.id}>
+              <Link
+                href={`/units/${unit.id}`}
+                className="game-panel flex items-center gap-3 p-3 transition hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <UnitPortrait unit={unit} size={56} />
+                <span className="min-w-0">
+                  <span className="block truncate font-heading font-bold">{unit.name}</span>
+                  <span className="block truncate text-xs italic text-muted-foreground">{unit.epithet}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       {RARITY_ORDER.map((rarity) => {
-        const units = ROSTER.filter((u) => u.rarity === rarity);
+        const units = (rarity === "lord" ? LORDS : ROSTER).filter((u) => u.rarity === rarity);
         const meta = RARITY_META[rarity];
         return (
           <div key={rarity}>

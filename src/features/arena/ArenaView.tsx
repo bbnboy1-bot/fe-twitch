@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 
 import type { ActivePoke } from "@/features/overlay/model";
+import { type ChannelNames, DEFAULT_CHANNEL_NAMES, unitDisplayName } from "@/features/units/names";
 import { getUnitById } from "@/features/units/roster";
 
 import { ArenaBackground } from "./ArenaBackground";
@@ -68,11 +69,14 @@ export function ArenaView({
   poke,
   roster,
   options,
+  names = DEFAULT_CHANNEL_NAMES,
   onRecruit,
 }: {
   poke: ActivePoke | null;
   roster: RosterEntry[];
   options: ArenaOptions;
+  /** Realm names for this channel (Phase 7). */
+  names?: ChannelNames;
   // eslint-disable-next-line no-unused-vars
   onRecruit?: (player: string) => void;
 }) {
@@ -303,7 +307,7 @@ export function ArenaView({
         act(loser, "down", DUEL_HOLD_MS);
         act(winner, "heal", 900);
         const wu = winner.unitId ? getUnitById(winner.unitId) : undefined;
-        showBanner(`${winner.name}'s ${wu?.name ?? "champion"} wins the duel`, "duel");
+        showBanner(`${winner.name}'s ${wu ? unitDisplayName(wu, names) : "champion"} wins the duel`, "duel");
         rerender();
       });
       later(end + DUEL_HOLD_MS, () => {
@@ -317,7 +321,7 @@ export function ArenaView({
         rerender();
       });
     },
-    [act, ensureUnit, float, later, showBanner],
+    [act, ensureUnit, float, later, names, showBanner],
   );
 
   const play = useCallback(
